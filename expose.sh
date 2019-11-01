@@ -537,7 +537,7 @@ do
 		# if perl available, pass content through markdown parser
 		if command -v perl >/dev/null 2>&1
 		then
-			content=$(perl "$scriptdir/Markdown_1.0.1/Markdown.pl" --html4tags <(echo "$content"))
+			content=$(perl "$scriptdir/markdown/markdown.pl" --html4tags <(echo "$content"))
 		fi
 		
 		# write to post template
