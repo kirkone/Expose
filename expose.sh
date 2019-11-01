@@ -6,13 +6,15 @@ scriptdir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # configuration
 
 # Source configuration file if it exists in the project directory
-if [ -f "$topdir/_config.sh" ]; then
-  . "$topdir/_config.sh"
+if [ -f "$topdir/config.sh" ]; then
+  . "$topdir/config.sh"
 fi
 
 site_title=${site_title:-"My Awesome Photos"}
 
 theme_dir=${theme_dir:-"themes/default"}
+in_dir=${in_dir:-"$topdir/input"}
+out_dir=${out_dir:-"$topdir/output"}
 
 # widths to scale images to (heights are calculated from source images)
 # you might want to change this for example, if your images aren't full screen on the browser side
@@ -76,6 +78,12 @@ ffmpeg_threads=${ffmpeg_threads:-0} # the -threads option for ffmpeg encode (0=a
 
 command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
 command -v identify >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
+command -v rsync >/dev/null 2>&1 || { echo "rsync is a required dependency, aborting..." >&2; exit 1; }
+
+if [ "$download_button" = true ]
+then
+	command -v zip >/dev/null 2>&1 || { echo "zip is a required dependency, aborting..." >&2; exit 1; }
+fi
 
 # file extensions for each video format
 video_format_extensions=("h264" "mp4" "h265" "mp4" "vp9" "webm" "vp8" "webm" "ogv" "ogv")
@@ -119,7 +127,7 @@ paths=() # relevant non-empty dirs in $topdir
 nav_name=() # a front-end friendly label for each item in paths[], with numeric prefixes stripped
 nav_depth=() # depth of each navigation item
 nav_type=() # 0 = structure, 1 = leaf. Where a leaf directory is a gallery of images
-nav_url=() # a browser-friendly url for each path, relative to _site
+nav_url=() # a browser-friendly url for each path, relative to output
 nav_count=() # the number of images in each gallery, or -1 if not a leaf
 
 metadata_file="metadata.txt" # search for this file in each gallery directory for gallery-wide metadata
@@ -127,6 +135,7 @@ metadata_file="metadata.txt" # search for this file in each gallery directory fo
 gallery_files=() # a flat list of all gallery images and videos
 gallery_nav=() # index of nav item the gallery image belongs to
 gallery_url=() # url-friendly name of each image
+gallery_md5=() # md5 hash of original image 
 gallery_type=() # 0 = image, 1 = video, 2 = image sequence
 gallery_maxwidth=() # maximum image size available
 gallery_maxheight=() # maximum height
@@ -170,6 +179,7 @@ chmod -R 740 "$scratchdir"
 output_url=""
 
 cleanup() {
+	echo "Cleaning up"
 	# remove any ffmpeg log/temp files
 	rm -f ffmpeg*.log
 	rm -f ffmpeg*.mbtree
@@ -188,19 +198,19 @@ cleanup() {
 	exit
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup INT TERM
 
-printf "Scanning directories"
+printf "Scanning directories "
 
 while read node
 do
-	printf "."
-	
-	if [ "$node" = "$topdir/_site" ]
+	if [ "$node" = "$out_dir" ]
 	then
 		continue
 	fi
 	
+	printf "."
+
 	node_depth=$(echo "$node" | awk -F"/" "{ print NF-$root_depth }")
 	
 	# ignore empty directories
@@ -239,16 +249,16 @@ do
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-done < <(find "$topdir" -type d ! -path "$topdir*/_*" | sort)
+done < <(find "$in_dir" -type d | sort)
 
 # re-create directory structure
-mkdir -p "$topdir/_site"
+mkdir -p "$out_dir"
 
 dir_stack=()
 url_rel=""
 nav_url+=(".") # first item in paths will always be $topdir
 
-printf "\nPopulating nav"
+printf " done\nPopulating nav "
 
 for i in "${!paths[@]}"
 do
@@ -287,12 +297,12 @@ do
 	done
 	
 	url+="$url_rel"
-	mkdir -p "$topdir/_site/$url"
+	mkdir -p "$out_dir/$url"
 	
 	nav_url+=("$url")
 done
 
-printf "\nReading files"
+printf " done\nReading files"
 
 # read in each file to populate $gallery variables
 for i in "${!paths[@]}"
@@ -307,19 +317,19 @@ do
 	name="${nav_name[i]}"
 	url="${nav_url[i]}"
 	
-	mkdir -p "$topdir"/_site/"$url"
+	mkdir -p "$out_dir"/"$url"
 
 	index=0
-	
+
 	# loop over found files
 	while read file
 	do
 		
-		printf "."
-		
 		filename=$(basename "$file")
 		filedir=$(dirname "$file")
 		filepath=$(winpath "$file")
+		
+		printf "\n    $filename"
 		
 		trimmed=$(echo "${filename%.*}" | sed -e 's/^[[:space:]0-9]*//;s/[[:space:]]*$//')
 		
@@ -333,7 +343,7 @@ do
 		if [ -d "$file" ] && [ $(echo "$filename" | grep "$sequence_keyword" | wc -l) -gt 0 ]
 		then
 			format="sequence"
-			image=$(find "$file" -maxdepth 1 ! -path "$file" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort | head -n 1)
+			image=$(find "$file" -maxdepth 1 ! -path "$file" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort -r | head -n 1)
 		else
 			extension=$(echo "${filename##*.}" | tr '[:upper:]' '[:lower:]')
 		
@@ -392,16 +402,16 @@ do
 			done
 		fi
 		# If autorotate is enabled, and the EXIF orientation exists, and the orientation is between 5 and 8 (vertical codes)
-		orientation=$(identify -format "%[EXIF:Orientation]" "$image")
-		if [ "$autorotate" = true ] && [ -n "$orientation" ] && [ $orientation -ge 5 ] && [ $orientation -le 8 ]
-		then
+		# orientation=$(identify -format "%[EXIF:Orientation]" "$image")
+		# if [ "$autorotate" = true ] && [ -n "$orientation" ] && [ $orientation -ge 5 ] && [ $orientation -le 8 ]
+		# then
 			# If the image is rotated, swap the height and width
-			width=$(identify -format "%h" "$image")
-			height=$(identify -format "%w" "$image")
-		else
+			# width=$(identify -format "%h" "$image")
+			# height=$(identify -format "%w" "$image")
+		# else
 			width=$(identify -format "%w" "$image")
 			height=$(identify -format "%h" "$image")
-		fi
+		# fi
 
 		maxwidth=0
 		maxheight=0
@@ -425,9 +435,11 @@ do
 		((index++))
 		
 		# store file and type for later use
+		mdx=`md5sum "$file" | head -c 10`
 		gallery_files+=("$file")
 		gallery_nav+=("$i")
 		gallery_url+=("$image_url")
+		gallery_md5+=("$mdx")
 		
 		if [ "$format" = "sequence" ]
 		then
@@ -441,7 +453,9 @@ do
 		gallery_maxwidth+=("$maxwidth")
 		gallery_maxheight+=("$maxheight")
 		gallery_colors+=("$palette")
-	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort)
+
+		printf " done"
+	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort -r)
 	
 	nav_count[i]="$index"
 done
@@ -473,16 +487,15 @@ do
 	
 	j=0
 	while [ "$j" -lt "${nav_count[i]}" ]
-	do
-	
-		printf "." # show progress
-		
+	do	
 		k=$((j+1))
 		file_path="${gallery_files[gallery_index]}"
 		file_type="${gallery_type[gallery_index]}"
 		
 		# try to find a text file with the same name
 		filename=$(basename "$file_path")
+		printf "\n    $filename" # show progress
+		
 		filename="${filename%.*}"
 
 		filedir=$(dirname "$file_path")
@@ -493,107 +506,124 @@ do
 			type="video"
 		fi
 		
-		textfile=$(find "$filedir/$filename".txt "$filedir/$filename".md ! -path "$file_path" -print -quit 2>/dev/null)
+		if [ ! -e "$topdir/.cache" ]
+		then
+			mkdir -p "$topdir/.cache"
+		fi
+
+		textfile=$(find "$topdir/$filename".txt "$topdir/$filename".md ! -path "$file_path" -print -quit 2>/dev/null)
 		
 		metadata=""
 		content=""
-		if LC_ALL=C file "$textfile" | grep -q text
+		if [ ! -e "$topdir/.cache/${gallery_md5[gallery_index]}" ]
 		then
-			# if there are two lines "---", the lines preceding the second "---" are assumed to be metadata
-			text=$(cat "$textfile" | tr -d $'\r')
-			text=${text%$'\n'}
-			metaline=$(echo "$text" | grep -n -m 2 -- "^---$" | tail -1 | cut -d ':' -f1)
-						
-			if [ "$metaline" ]
+			if LC_ALL=C file "$textfile" | grep -q text
 			then
-				sumlines=$(echo "$text" | wc -l)
-				taillines=$((sumlines-metaline))
-				
-				metadata=$(head -n "$metaline" "$textfile")
-				content=$(tail -n "$taillines" "$textfile")
-			else
-				metadata=""
-				content=$(echo "$text")
-			fi
-		fi
-		
-		exif_metadata=""
-		exif_metadata=$(identify -format "%[EXIF:*]" "$file_path" | sed 's/\:/_/g' | sed 's/=/\:/g')
-
-		metadata+=$'\n'
-		metadata+="$gallery_metadata"
-		metadata+=$'\n'
-		metadata+="$exif_metadata"
-		metadata+=$'\n'
-
-		z=1
-		while read line
-		do
-			# add generated palette to metadata
-			metadata="$metadata""color$z:$line"$'\n'
-			((z++))
-		done < <(echo "${gallery_colors[gallery_index]}")
-		
-		backgroundcolor=$(echo "${gallery_colors[gallery_index]}" | sed -n 2p)
-		if [ "$override_textcolor" = false ]
-		then
-			textcolor=$(echo "${gallery_colors[gallery_index]}" | tail -1)
-		fi
-		
-		# if perl available, pass content through markdown parser
-		if command -v perl >/dev/null 2>&1
-		then
-			content=$(perl "$scriptdir/markdown/markdown.pl" --html4tags <(echo "$content"))
-		fi
-		
-		# write to post template
-		post=$(template "$post_template" index "$k")
-		
-		post=$(template "$post" post "$content")
-		
-		while read line
-		do
-			key=$(echo "$line" | cut -d ':' -f1 | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-			value=$(echo "$line" | cut -d ':' -f2- | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-			colon=$(echo "$line" | grep ':')
-
-			if [ "$key" ] && [ "$value" ] && [ "$colon" ]
-			then
-				post=$(template "$post" "$key" "$value")
-				
-				if [ "$key" = "image-options" ]
+				# if there are two lines "---", the lines preceding the second "---" are assumed to be metadata
+				text=$(cat "$textfile" | tr -d $'\r')
+				text=${text%$'\n'}
+				metaline=$(echo "$text" | grep -n -m 2 -- "^---$" | tail -1 | cut -d ':' -f1)
+							
+				if [ "$metaline" ]
 				then
-					gallery_image_options[gallery_index]="$value"
-				fi
-				
-				if [ "$key" = "video-options" ]
-				then
-					gallery_video_options[gallery_index]="$value"
-				fi
-				
-				if [ "$key" = "video-filters" ]
-				then
-					gallery_video_filters[gallery_index]="$value"
+					sumlines=$(echo "$text" | wc -l)
+					taillines=$((sumlines-metaline))
+					
+					metadata=$(head -n "$metaline" "$textfile")
+					content=$(tail -n "$taillines" "$textfile")
+				else
+					metadata=""
+					content=$(echo "$text")
 				fi
 			fi
-		done < <(echo "$metadata")
-		
-		# set image parameters
-		post=$(template "$post" imageurl "${gallery_url[gallery_index]}")
-		post=$(template "$post" imagewidth "${gallery_maxwidth[gallery_index]}")
-		
-		post=$(template "$post" imageheight "${gallery_maxheight[gallery_index]}")
-		
-		# set colors
-		post=$(template "$post" textcolor "$textcolor")
-		post=$(template "$post" backgroundcolor "$backgroundcolor")
-		
-		post=$(template "$post" type "$type")
+			
+			exif_metadata=""
+			exif_metadata=$(identify -format "%[EXIF:*]" "$file_path" | sed 's/\:/_/g' | sed 's/=/\:/g')
+
+			metadata+=$'\n'
+			metadata+="$gallery_metadata"
+			metadata+=$'\n'
+			metadata+="$exif_metadata"
+			metadata+=$'\n'
+
+			z=1
+			while read line
+			do
+				# add generated palette to metadata
+				metadata="$metadata""color$z:$line"$'\n'
+				((z++))
+			done < <(echo "${gallery_colors[gallery_index]}")
+			backgroundcolor=$(echo "${gallery_colors[gallery_index]}" | sed -n 2p)
+			if [ "$override_textcolor" = false ]
+			then
+				textcolor=$(echo "${gallery_colors[gallery_index]}" | tail -1)
+			fi
+			
+			# if perl available, pass content through markdown parser
+			if command -v perl >/dev/null 2>&1
+			then
+				content=$(perl "$scriptdir/markdown/markdown.pl" --html4tags <(echo "$content"))
+			fi
+			
+			# write to post template
+			post=$(template "$post_template" index "$k")
+			
+			post=$(template "$post" post "$content")
+			
+			printf  " "
+			while read line
+			do
+				printf  "."
+				key=$(echo "$line" | cut -d ':' -f1 | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+				value=$(echo "$line" | cut -d ':' -f2- | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+				colon=$(echo "$line" | grep ':')
+
+				if [ "$key" ] && [ "$value" ] && [ "$colon" ]
+				then
+					post=$(template "$post" "$key" "$value")
+					
+					if [ "$key" = "image-options" ]
+					then
+						gallery_image_options[gallery_index]="$value"
+					fi
+					
+					if [ "$key" = "video-options" ]
+					then
+						gallery_video_options[gallery_index]="$value"
+					fi
+					
+					if [ "$key" = "video-filters" ]
+					then
+						gallery_video_filters[gallery_index]="$value"
+					fi
+				fi
+			done < <(echo "$metadata")
+			
+			# set image parameters
+			post=$(template "$post" imagemd5 "${gallery_md5[gallery_index]}") 
+			post=$(template "$post" imageurl "${gallery_url[gallery_index]}")
+			post=$(template "$post" imagewidth "${gallery_maxwidth[gallery_index]}")
+			
+			post=$(template "$post" imageheight "${gallery_maxheight[gallery_index]}")
+			
+			# set colors
+			post=$(template "$post" textcolor "$textcolor")
+			post=$(template "$post" backgroundcolor "$backgroundcolor")
+			
+			post=$(template "$post" type "$type")
+
+			echo "$post" > "$topdir/.cache/${gallery_md5[gallery_index]}"
+
+		else
+			post=$(cat "$topdir/.cache/${gallery_md5[gallery_index]}")
+		fi
 
 		html=$(template "$html" content "$post {{content}}" true)
 		
 		((gallery_index++))
 		((j++))
+
+		printf " done"
 	done
 	
 	#write html file
@@ -710,11 +740,11 @@ do
 	# remove references to any unused {{xxx}} template variables and empty <ul>s from navigation
 	html=$(echo "$html" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
 	
-	echo "$html" > "$topdir/_site/${nav_url[i]}"/index.html
+	echo "$html" > "$out_dir/${nav_url[i]}"/index.html
 	
 done
 
-# write top level index.html
+printf "\nWrite top level index.html"
 
 basepath="./"
 firsthtml=$(template "$firsthtml" basepath "$basepath")
@@ -722,19 +752,19 @@ firsthtml=$(template "$firsthtml" disqus_identifier "$firstpath")
 firsthtml=$(template "$firsthtml" resourcepath "$firstpath/")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
-echo "$firsthtml" > "$topdir/_site"/index.html
+echo "$firsthtml" > "$out_dir"/index.html
 
 printf "\nStarting encode\n"
 
 # resize images, encode videos, compile image sequences
 for i in "${!gallery_files[@]}"
 do
-	echo -e "${gallery_url[i]}"
+	echo -e "    ${gallery_url[i]}"
 	
 	navindex="${gallery_nav[i]}"
 	url="${nav_url[navindex]}/${gallery_url[i]}"
 	
-	mkdir -p "$topdir/_site/$url"
+	mkdir -p "$out_dir/$url"
 	
 	if [ "${gallery_type[i]}" = 0 ]
 	then		
@@ -763,7 +793,7 @@ do
 						fi
 					done
 					
-					if [ ! -s "$topdir/_site/$url/$videofile" ]
+					if [ ! -s "$out_dir/$url/$videofile" ]
 					then
 						seqfinished=false
 						break
@@ -785,10 +815,10 @@ do
 				tempname=$(printf "%04d" "$j")
 				cp "$seqfile" "$scratchdir/$tempname"
 				((j++))
-			done < <(find "$filepath" -maxdepth 1 ! -path "$filepath" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort)
+			done < <(find "$filepath" -maxdepth 1 ! -path "$filepath" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort -r)
 			sequencevideo="$scratchdir/sequencevideo.mp4"
 			
-			maxres=$(printf '%s\n' "${resolution[@]}" | sort -n | tail -n 1)
+			maxres=$(printf '%s\n' "${resolution[@]}" | sort -r -n | tail -n 1)
 			
 			ffmpeg -loglevel error -nostdin -f image2 -y -i "$scratchdir/%04d" -c:v libx264 -threads "$ffmpeg_threads" -vf scale="$maxres:trunc(ow/a/2)*2" -profile:v high -pix_fmt yuv420p -preset "$h264_encodespeed" -crf 15 -r "$sequence_framerate" -f mp4 "$sequencevideo"
 			
@@ -825,7 +855,7 @@ do
 		if [ "$draft" = true ]
 		then
 			# if in draft mode, use single pass CRF coding with ultrafast preset
-			output_url=$(winpath "$topdir/_site/$url/${resolution[0]}-h264.mp4")
+			output_url=$(winpath "$out_dir/$url/${resolution[0]}-h264.mp4")
 			
 			[ -s "$output_url" ] && continue
 			
@@ -854,9 +884,9 @@ do
 							fi
 						done
 						
-						[ -s "$topdir/_site/$url/$videofile" ] && continue
+						[ -s "$out_dir/$url/$videofile" ] && continue
 						
-						output_url=$(winpath "$topdir/_site/$url/$videofile")
+						output_url=$(winpath "$out_dir/$url/$videofile")
 						nullpath=$(winpath "/dev/null")
 						
 						echo -e "\tEncoding $vformat $res x $scaled_height"
@@ -940,17 +970,17 @@ do
 	for res in "${resolution[@]}"
 	do
 		((count++))
-		[ -e "$topdir/_site/$url/$res.jpg" ] && continue
+		[ -e "$out_dir/$url/$res.jpg" ] && continue
 		
 		# only downscale original image
 		if [ "$width" -ge "$res" ] || [ "$count" -eq "${#resolution[@]}" ]
 		then
-			convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$topdir/_site/$url/$res.jpg"
+			convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
 		fi
 	done
 	
 	# write zip file
-	if [ "$download_button" = true ] && [ ! -e "$topdir/_site/$url/${gallery_url[i]}.zip" ]
+	if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
 	then
 		mkdir "$scratchdir/zip"
 		
@@ -967,14 +997,14 @@ do
 		
 		chmod -R 740 "$scratchdir/zip"
 		
-		cd "$scratchdir/zip" && zip -r "$topdir/_site/$url/${gallery_url[i]}.zip" ./
+		cd "$scratchdir/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
 		cd "$topdir"
 	fi
 	
 	rm -rf "${scratchdir:?}/"*
 done
 
-# copy resources to _site
-rsync -av --exclude="template.html" --exclude="post-template.html" "$scriptdir/$theme_dir/" "$topdir/_site/" >/dev/null
+# copy resources to output
+rsync -av --exclude="template.html" --exclude="post-template.html" "$scriptdir/$theme_dir/" "$out_dir/" >/dev/null
 
 cleanup
