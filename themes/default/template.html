@@ -1,94 +1,128 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-	<head>
-		<meta http-equiv="X-UA-Compatible" content="IE=Edge"/> 
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!DOCTYPE html>
+<html lang="en">
 
-		<title>{{sitetitle}} - {{gallerytitle}}</title>
-		<link href='https://fonts.googleapis.com/css?family=Lato:300,100' rel='stylesheet' type='text/css' />
-		<link type="text/css" rel="stylesheet" media="all" href="{{basepath}}global.css" />
-		<script src="{{basepath}}json.js"></script>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-		<script src="{{basepath}}cookie.js"></script>
-		<script src="{{basepath}}global.js"></script>
-	</head>
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+	<title>{{sitetitle}} - {{gallerytitle}}</title>
+	<link type="text/css" rel="stylesheet" media="all" href="{{basepath}}global.css" />
+	<script defer src="https://use.fontawesome.com/releases/v5.0.8/js/solid.js" integrity="sha384-+Ga2s7YBbhOD6nie0DzrZpJes+b2K1xkpKxTFFcx59QmVPaSA8c7pycsNaFwUK6l"
+	 crossorigin="anonymous"></script>
+	<script defer src="https://use.fontawesome.com/releases/v5.0.8/js/brands.js" integrity="sha384-sCI3dTBIJuqT6AwL++zH7qL8ZdKaHpxU43dDt9SyOzimtQ9eyRhkG3B7KMl6AO19"
+	 crossorigin="anonymous"></script>
+	<script defer src="https://use.fontawesome.com/releases/v5.0.8/js/fontawesome.js" integrity="sha384-7ox8Q2yzO/uWircfojVuCQOZl+ZZBg2D2J5nkpLqzH1HY0C1dHlTKIbpRz/LG23c"
+	 crossorigin="anonymous"></script>
+	<script src="{{basepath}}json.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script src="{{basepath}}cookie.js"></script>
+	<script src="{{basepath}}global.js"></script>
+</head>
+
 <body data-resolution="{{resolution}}" data-respath="{{resourcepath}}">
-	
-<ol id="marker">
-</ol>
 
-<div id="sidebar">
-	<div class="foreground">
-		<div id="profile" class="camera icon"></div>
-		<h1>{{sitetitle}}</h1>
-		<ul id="nav">
-			{{navigation}}			 
+	<ul id="marker">
+	</ul>
+
+	<div id="sidebar">
+		<div class="foreground">
+			<div id="profile">
+				<a href="/"><i class="fas fa-camera-retro fa-2x"></i></a>
+			</div>
+			<h1><a href="/">{{sitetitle}}</a></h1>
+			<ul id="nav">
+				{{navigation}}
+			</ul>
+		</div>
+
+		<ul id="control">
+			<li>
+				<a href="#" id="resbutton">
+					<i class="fas fa-desktop fa-fw"></i>
+					<span class="restext"></span>
+				</a>
+			</li>
+			<li style="display: {{text_toggle}}">
+				<a href="#" id="textbutton" class="active">
+					<i class="fas fa-eye-slash fa-fw"></i>
+					<span class="text">hide text</span>
+				</a>
+			</li>
+			<li style="display: {{social_button}}">
+				<a href="#" id="sharebutton">
+					<i class="fas fa-share-alt fa-fw"></i> share</a>
+			</li>
+			<li style="display: {{download_button}}">
+				<a href="#" id="download">
+					<i class="fas fa-download fa-fw"></i> download</a>
+			</li>
+		</ul>
+
+		<div class="background"></div>
+	</div>
+
+	<div id="resolution">
+	</div>
+
+	<div id="share">
+		<ul>
+			<li>
+				<a href="#" onclick="window.open('https://www.facebook.com/sharer.php?u=' + encodeURIComponent(window.location.origin+window.location.pathname+'#'+$(current_slide).data('imagemd5'))); return false">
+					<i class="fab fa-facebook-square fa-fw"></i> Facebook
+				</a>
+			</li>
+
+			<li>
+				<a href="#" onclick="window.open('https://www.reddit.com/submit?url=' + encodeURIComponent(window.location.origin+window.location.pathname+'#'+$(current_slide).data('imagemd5'))); return false">
+					<i class="fab fa-reddit-square fa-fw"></i> Reddit
+				</a>
+			</li>
+
+			<li>
+				<a href="#" onclick="window.open('http://pinterest.com/pin/create/button/?url=' + encodeURIComponent(window.location.origin+window.location.pathname+'#'+$(current_slide).data('imagemd5'))); return false">
+					<i class="fab fa-pinterest-square fa-fw"></i> Pinterest</a>
+			</li>
+
+			<li>
+				<a href="#" onclick="window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(window.location.origin+window.location.pathname+'#'+$(current_slide).data('imagemd5'))); return false">
+					<i class="fab fa-twitter-square fa-fw"></i> Twitter
+				</a>
+			</li>
+
+			<li>
+				<a href="#" id="copylink">
+					<i class="fas fa-link fa-fw"></i>
+					<span id="copylinktext">Copy Link</span>
+				</a>
+			</li>
+
+			<script type="text/javascript">
+				document.addEventListener('copy', function (e) {
+					e.clipboardData.setData('text/plain', window.location.origin + window.location.pathname + "#" + $(current_slide).data('imagemd5'));
+					e.preventDefault();
+				});
+				$(document).ready(function () {
+					$('#copylink').click(function () {
+						var oldtext = $('#copylinktext').text;
+						document.execCommand("copy", false, null);
+
+						$('#copylinktext').text("Done!");
+						setTimeout(function () {
+							$('#copylinktext').text("Copy Link");
+						}, 2000);
+
+						return false;
+					});
+				});
+			</script>
+
 		</ul>
 	</div>
-	
-	<ul id="control">
-	<li><a href="#" id="resbutton"><span class="monitor icon"></span><span class="restext"></span></a></li>
-	<li style="display: {{text_toggle}}"><a href="#" id="textbutton" class="active"><span class="toggle icon"></span><span class="text">hide text</span></a></li>
-	<li style="display: {{social_button}}"><a href="#" id="sharebutton"><span class="heart icon"></span>share</a></li>
-	<li  style="display: {{download_button}}"><a href="#" id="download"><span class="download icon"></span>download</a></li>
-	</ul>
-			
-	<div class="background"></div>
-</div>
 
-<div id="resolution">
-</div>
-
-<div id="share">
-	<ul>
-	<li><a href="https://news.ycombinator.com/submit" target="_blank"><span class="icon hackernews"></span> Hackernews</a></li>
-	
-	<li><a href="#" onclick="window.open('https://www.facebook.com/sharer.php?u=' + encodeURIComponent(window.location)); return false">
-		<span class="icon facebook"></span> Facebook
-	</a></li>
-	
-	<li><a href="#" onclick="window.open('https://www.reddit.com/submit?url=' + encodeURIComponent(window.location)); return false">
-		<span class="icon reddit"></span> Reddit
-	</a></li>
-	
-	<li><a href="#" id="pinterest"><span class="icon pinterest"></span> Pinterest</a></li>
-	<script type="text/javascript">
-		$(document).ready(function(){
-			$('#pinterest').click(function(){
-				window.open('http://pinterest.com/pin/create/button/?url='+encodeURIComponent(window.location)+'&media='+encodeURIComponent(window.location)+($(current_slide).data('url')+'/'+$('#resolution li').eq(0).data('res')+'.jpg'));
-				return false;
-			});
-		});
-	</script>
-	
-	
-	<li><a href="#" onclick="window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(window.location)); return false">
-		<span class="icon twitter"></span> Twitter
-	</a></li>
-	
-	</ul>
-</div>
-
-<div id="main">
-	{{content}}
-	
-	<div id="comments">
-	<div id="disqus_thread"></div>
+	<div id="main">
+		{{content}}
 	</div>
-	
-	<script type="text/javascript">
-		var disqus_shortname = '{{disqus_shortname}}';
-		var disqus_identifier = '{{disqus_identifier}}';
-		
-		if(disqus_shortname){
-			(function() {
-				var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-				dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-				(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-			})();
-		}
-	</script>
-</div>
 
 </body>
+
 </html>

@@ -4,7 +4,7 @@ padding: 0;
 border: 0;
 background-color: #000;
 color: #fff;
-font: 300 14px/22px 'Lato',helvetica, arial, sans-serif;
+font: 300 14px/22px helvetica, arial, sans-serif;
 width: 100%;
 height: 100%;
 padding: 0;
@@ -72,6 +72,12 @@ a.active:hover, li.active a:hover{
 	opacity: 1;
 }
 
+#marker li.active {
+	width: 10px;
+	z-index: 1000;
+	position: relative;
+}
+
 /* sidebar */
 
 #sidebar{
@@ -130,7 +136,7 @@ transition: background-color 1s;
 }
 
 #sidebar h1{
-font: 300 14px/18px 'Lato',helvetica, arial, sans-serif;
+font: 300 14px/18px helvetica, arial, sans-serif;
 margin: 0;
 padding: 32px 0 20px 5px;
 float: left;
@@ -201,122 +207,14 @@ clear: both;
 	float: left;
 	width: 18px;
 	height: 16px;
-	margin: 5px 20px 0 15px;
+	margin: 0 20px 0 15px;
 	mix-blend-mode: screen;
-}
-
-
-/* only webkit browsers support css masks, we will implement for webkit and browser detect */
-
-.icon.camera{
-	background: transparent url(img/camera.png) no-repeat;
-}
-
-.icon.camera.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/camera_mask.png);
-}
-
-.icon.monitor{
-	background: transparent url(img/monitor.png) no-repeat;
-}
-
-.icon.monitor.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/monitor_mask.png);
-}
-
-.icon.toggle{
-	background: transparent url(img/text.png) no-repeat;
-}
-
-.icon.toggle.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/text_mask.png);
-}
-
-.icon.comment{
-	background: transparent url(img/comment.png) no-repeat;
-}
-
-.icon.comment.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/comment_mask.png);
-}
-
-
-.icon.heart{
-	background: transparent url(img/heart.png) no-repeat;
-}
-
-.icon.heart.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/heart_mask.png);
-}
-
-.icon.download{
-	background: transparent url(img/download.png) no-repeat;
-}
-
-.icon.download.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/download_mask.png);
-}
-
-.icon.webkit{
-	background-color: #ccc;
 }
 
 #share .icon{
 width: 26px;
 height: 24px;
 margin: 7px 10px 0 10px;
-background-color: #ddd;
-}
-
-.icon.hackernews{
-	background: transparent url(img/hackernews.png) no-repeat;
-}
-
-.icon.hackernews.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/hackernews_mask.png);
-}
-
-.icon.facebook{
-	background: transparent url(img/facebook.png) no-repeat;
-}
-
-.icon.facebook.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/facebook_mask.png);
-}
-
-.icon.twitter{
-	background: transparent url(img/twitter.png) no-repeat;
-}
-
-.icon.twitter.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/twitter_mask.png);
-}
-
-.icon.reddit{
-	background: transparent url(img/reddit.png) no-repeat;
-}
-
-.icon.reddit.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/reddit_mask.png);
-}
-
-.icon.pinterest{
-	background: transparent url(img/pinterest.png) no-repeat;
-}
-
-.icon.pinterest.webkit{
-	background-image: none;
-	-webkit-mask-box-image: url(img/pinterest_mask.png);
 }
 
 #textbutton{
@@ -326,10 +224,6 @@ cursor: pointer;
 /* comments */
 #comments{
 background-color: #000;
-}
-
-#disqus_thread{
-	margin: 40px 70px 70px 70px;
 }
 
 .close{
@@ -479,13 +373,28 @@ top: 0;
 left: 0;
 }
 
+.exif{
+position: absolute;
+bottom: 5px;
+right: 5px;
+z-index: 1;
+font-size: 14px;
+opacity: 0.7;
+}
+
+.exif p{
+padding: 2px 5px;
+margin: 0;
+line-height: normal;
+}
+
 .post{
 position: absolute;
 top: 0;
 left: 0;
 width: 100%;
 height: 100%;
-font: 300 1em/1.6em 'Lato',helvetica, arial, sans-serif;
+font: 300 1em/1.6em helvetica, arial, sans-serif;
 z-index: 5;
 -moz-opacity: 1;
 -webkit-opacity: 1;
@@ -535,7 +444,7 @@ z-index: 2;
 
 .post h1, .post h2, .post h3{
 display: block;
-font: 100 4em 'Lato',helvetica, arial, sans-serif;
+font: 100 4em helvetica, arial, sans-serif;
 margin: 0;
 padding: 20px 0 10px 0;
 }
@@ -552,14 +461,14 @@ padding: 10px 0 10px 0;
 
 .post h3{
 	clear: both;
-	font: 300 1.2em 'Lato',helvetica, arial, sans-serif;
+	font: 300 1.2em helvetica, arial, sans-serif;
 	padding: 10px 0 10px 0;
 }
 
 .post h1 .sub{
 display: block;
 margin: 10px 0 0 0;	
-font: 300 18px/22px 'Lato',helvetica, arial, sans-serif;
+font: 300 18px/22px helvetica, arial, sans-serif;
 }
 
 .post h2 .sub{
@@ -620,7 +529,7 @@ float: left;
 .prev a, .next a{
 display: block;
 min-height: 100px;
-font: 300 48px 'Lato',helvetica, arial, sans-serif;
+font: 300 48px helvetica, arial, sans-serif;
 -webkit-transition: all 0.5s;
 -moz-transition: all 0.5s;
 -ms-transition: all 0.5s;

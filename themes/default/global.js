@@ -193,11 +193,6 @@ $(document).ready(function(){
 		}
 	});
 	
-	// browser detect
-	if($.browser.webkit){
-		$('.icon').addClass('webkit');
-	}
-	
 	$('#sharebutton').click(function(){
 		if($('#share').hasClass('active')){
 			$('#share').removeClass('active');
@@ -248,13 +243,14 @@ $(document).ready(function(){
 	$('.slide').each(function(i, v){
 		var color1 = $(this).data('color1');
 		var color7 = $(this).data('color7');
+		var imagemd5 = $(this).data('imagemd5');
 		if(!color1){
 			color1 = '#000';
 		}
 		if(!color7){
 			color7 = '#fff';
 		}
-		$('#marker').append('<li style="background-color: '+color1+'; height: '+mheight+'%"><a href="#'+(i+1)+'" style="background-color: '+color7+'"></a></li>');
+		$('#marker').append('<li style="background-color: '+color1+'; height: '+mheight+'%"><a href="#'+imagemd5+'" style="background-color: '+color7+'"></a></li>');
 	});
 	
 });
@@ -364,8 +360,6 @@ function scrollcheck(){
 			$('#sidebar .active a, #resolution .active a').css('color',highcolor).css('border-color', highcolor);
 		}
 		
-		$('#sidebar .icon.webkit, #share .icon.webkit').css('background-color',sidecolor);
-				
 		// highlight nav
 		
 		if(index >= 0){
@@ -610,34 +604,4 @@ function pad(n, width, z) {
   z = z || '0';
   n = n + '';
   return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
-}
-
-// add back browser detect
-jQuery.uaMatch = function( ua ) {
-ua = ua.toLowerCase();
-var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-    /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-    /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-    /(msie) ([\w.]+)/.exec( ua ) ||
-    ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
-    [];
-return {
-    browser: match[ 1 ] || "",
-    version: match[ 2 ] || "0"
-};
-};
-if ( !jQuery.browser ) {
-matched = jQuery.uaMatch( navigator.userAgent );
-browser = {};
-if ( matched.browser ) {
-    browser[ matched.browser ] = true;
-    browser.version = matched.version;
-}
-// Chrome is Webkit, but Webkit is also Safari.
-if ( browser.chrome ) {
-    browser.webkit = true;
-} else if ( browser.webkit ) {
-    browser.safari = true;
-}
-jQuery.browser = browser;
 }
