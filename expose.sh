@@ -517,9 +517,15 @@ do
 			fi
 		fi
 		
+		exif_metadata=""
+		exif_metadata=$(identify -format "%[EXIF:*]" "$file_path" | sed 's/\:/_/g' | sed 's/=/\:/g')
+
 		metadata+=$'\n'
 		metadata+="$gallery_metadata"
 		metadata+=$'\n'
+		metadata+="$exif_metadata"
+		metadata+=$'\n'
+
 		z=1
 		while read line
 		do
