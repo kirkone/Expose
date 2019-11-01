@@ -123,7 +123,7 @@ else
 fi
 
 # directory structure will form nav structure
-paths=() # relevant non-empty dirs in $topdir
+paths=() # relevant non-empty dirs in $in_dir
 nav_name=() # a front-end friendly label for each item in paths[], with numeric prefixes stripped
 nav_depth=() # depth of each navigation item
 nav_type=() # 0 = structure, 1 = leaf. Where a leaf directory is a gallery of images
@@ -146,7 +146,7 @@ gallery_video_options=() # video commands extracted from post metadata
 gallery_video_filters=() # filter commands added to ffmpeg calls
 
 # scan working directory to populate $nav variables
-root_depth=$(echo "$topdir" | awk -F"/" "{ print NF }")
+root_depth=$(echo "$in_dir" | awk -F"/" "{ print NF }")
 
 # if on cygwin, transforms given param to windows style path
 winpath () {
@@ -195,6 +195,7 @@ cleanup() {
 		rm -f "$output_url"
 	fi
 	
+	echo "    done"
 	exit
 }
 
@@ -204,11 +205,6 @@ printf "Scanning directories "
 
 while read node
 do
-	if [ "$node" = "$out_dir" ]
-	then
-		continue
-	fi
-	
 	printf "."
 
 	node_depth=$(echo "$node" | awk -F"/" "{ print NF-$root_depth }")
@@ -249,25 +245,19 @@ do
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-done < <(find "$in_dir" -type d | sort)
+done < <(find "$in_dir" -type d ! -path "$in_dir" ! -path "$in_dir*/_*" | sort)
 
 # re-create directory structure
 mkdir -p "$out_dir"
 
 dir_stack=()
 url_rel=""
-nav_url+=(".") # first item in paths will always be $topdir
 
 printf " done\nPopulating nav "
 
 for i in "${!paths[@]}"
 do
 	printf "."
-	
-	if [ "$i" = 0 ]
-	then
-		continue
-	fi
 	
 	path="${paths[i]}"
 	if [ "$i" -gt 1 ]
@@ -298,7 +288,6 @@ do
 	
 	url+="$url_rel"
 	mkdir -p "$out_dir/$url"
-	
 	nav_url+=("$url")
 done
 
@@ -316,7 +305,7 @@ do
 	dir="${paths[i]}"
 	name="${nav_name[i]}"
 	url="${nav_url[i]}"
-	
+
 	mkdir -p "$out_dir"/"$url"
 
 	index=0
@@ -511,7 +500,7 @@ do
 			mkdir -p "$topdir/.cache"
 		fi
 
-		textfile=$(find "$topdir/$filename".txt "$topdir/$filename".md ! -path "$file_path" -print -quit 2>/dev/null)
+		textfile=$(find "$in_dir/$filename".txt "$in_dir/$filename".md ! -path "$file_path" -print -quit 2>/dev/null)
 		
 		metadata=""
 		content=""
@@ -763,7 +752,7 @@ do
 	
 	navindex="${gallery_nav[i]}"
 	url="${nav_url[navindex]}/${gallery_url[i]}"
-	
+
 	mkdir -p "$out_dir/$url"
 	
 	if [ "${gallery_type[i]}" = 0 ]
