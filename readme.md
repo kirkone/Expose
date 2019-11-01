@@ -1,6 +1,6 @@
 ## Exposé
 
-A simple static site generator for photoessays
+A simple static site generator for photoessays based on [this](https://github.com/Jack000/Expose) repo.
 
 ### Intro
 
@@ -12,28 +12,21 @@ Expose is a Bash script that turns those images *and videos* into a photoessay s
 
 If you're not a fan of that look, a [Medium-style theme](http://jack.ventures/sample/inner-mongolia) is included
 
-tested on Windows/Cygwin, OSX, and should be fine on Linux
-
 ### Installation
 
 The only dependency is Imagemagick. For videos FFmpeg is also required.
 
-Download the repo and alias the script
-
-	alias expose=/script/location/expose.sh
-
-for permanent use add this line to your ~/.profiles, ~/.bashrc etc depending on system
-
 ### Basic usage
 
-	cd ~/folderofimages
-	expose
-
-The script operates on your current working directory, and outputs a _site directory.
+```sh
+cd ./projects/example.site
+../../expose.sh
+```
+The script operates on your current working directory, and outputs a `output` directory.
 
 ### Configuration
 
-Site title, theme, jpeg quality and other config values can be edited in expose.sh itself, you can also create `_config.sh` in the top
+Site title, theme, jpeg quality and other config values can be edited in `config.sh` in the top
 level of your project, eg:
 
 ```sh
@@ -45,11 +38,13 @@ backgroundcolor="#ffffff"
 
 ### Flags
 
-	expose -d
+```
+expose -d
+```
 
 The -d flag enables draft mode, where only a single low resolution is encoded. This can be used for a quick preview or for layout purposes.
 
-Generated images and videos are not overwritten, to do a completely clean build delete the existing _site directory first.
+Generated images and videos are not overwritten, to do a completely clean build delete the existing output directory first.
 
 ### Adding text
 
@@ -59,7 +54,7 @@ The text associated with each image is read from any text file with the same fil
 
 ### Sorting
 
-Images are sorted by alphabetical order. To arbitrarily order images, add a numerical prefix
+Images are sorted by reverse alphabetical order. To arbitrarily order images, add a numerical prefix
 
 ### Organization
 
@@ -120,7 +115,7 @@ CSS classes can be passed to the template via the "class" property. eg: use `cla
 
 ### Metadata file
 
-If you want certain variables to apply to an entire gallery, place a metadata.txt (this is configurable) file in the gallery directory. eg. in metadata.txt:
+If you want certain variables to apply to an entire gallery, place a metadata.txt (this is configurable) file in the project directory. eg. in metadata.txt:
 
 	width: 19
 
@@ -246,6 +241,6 @@ will set width to 50 if no specific value has been assigned to it by the time pa
 
 Any unused {{xxx}} variables that did not have defaults are removed from the generated page.
 
-Any non-template files (css, images, javascript) in the theme directory are simply copied into the _site directory.
+Any non-template files (css, images, javascript) in the theme directory are simply copied into the output directory.
 
 To avoid additional dependencies, the YAML parser and template engine is simply a sed regex. This means that YAML metadata must take the form of simple key:value pairs, and more complex liquid template syntax are not available.
