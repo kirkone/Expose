@@ -19,8 +19,7 @@ The only dependency is Imagemagick. For videos FFmpeg is also required.
 ### Basic usage
 
 ```sh
-cd ./projects/example.site
-../../expose.sh
+expose.sh
 ```
 The script operates on your current working directory, and outputs a `output` directory.
 
@@ -31,7 +30,7 @@ level of your project, eg:
 
 ```sh
 site_title="Alternate Site Title"
-theme_dir="theme2"
+theme="theme2"
 social_button=false
 backgroundcolor="#ffffff"
 ```
@@ -39,7 +38,13 @@ backgroundcolor="#ffffff"
 ### Flags
 
 ```
-expose -d
+expose.sh -p example.site
+```
+
+The -p flag privides the name of the project folder that should be processed. Defaults to the first folder in the `./projects` folder.
+
+```
+expose.sh -d
 ```
 
 The -d flag enables draft mode, where only a single low resolution is encoded. This can be used for a quick preview or for layout purposes.

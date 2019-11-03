@@ -1,0 +1,20 @@
+<div class="slide" style="color: #ffffff; background-color: #250F0C"
+	data-type="image" data-width="{{width}}" data-height="{{height}}" data-imagewidth="3840"
+	data-imageheight="2560" data-textcolor="#ffffff" data-color1="#060304"
+	data-color2="#250F0C" data-color3="#291F20" data-color4="#502A1D" data-color5="#5F4A41"
+	data-color6="#9A5E40" data-color7="#C2A79A" data-videoformats="{{videoformats}}"
+	data-polygon='{{polygon}}' data-imagemd5='2e3362bd70'>
+	<a name="2e3362bd70" class="internal"></a>
+	
+	<div class="post" style="top: {{top:70}}%; left: {{left:20}}%; width: {{width:60}}%; height: {{height:30}}%">
+		<div class="content">
+		
+		</div>
+	</div>
+	
+	<img class="image blank" src="//:0" width="3840" height="2560" data-url="dsc02081" />
+
+	<div class="exif" style="color: #9A5E40; background-color: #250F0C">
+		<p>SONY ILCE-7M2 | F:4/1 | 1/1 | 24mm | ISO 100</p>
+	</div>
+</div>

@@ -3,18 +3,45 @@
 topdir=$(pwd)
 scriptdir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
+draft=false
+project=$(ls "$topdir/projects" | head -1)
+proj_dir="$topdir/projects/$project"
+while getopts ":dp:" opt; do
+  case "${opt}" in
+    d)
+		echo "Draft mode On"
+		draft=true
+		;;
+	p)
+		if [ -d "$topdir/projects/${OPTARG}" ]
+		then
+			echo "using project: ${OPTARG}"
+			project=${OPTARG}
+			proj_dir="$topdir/projects/${OPTARG}"
+		else
+			echo "project '${OPTARG}' not found"
+			exit
+		fi
+		;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
 # configuration
 
 # Source configuration file if it exists in the project directory
-if [ -f "$topdir/config.sh" ]; then
-  . "$topdir/config.sh"
+if [ -f "$proj_dir/config.sh" ]; then
+  . "$proj_dir/config.sh"
 fi
 
 site_title=${site_title:-"My Awesome Photos"}
 
-theme_dir=${theme_dir:-"themes/default"}
-in_dir=${in_dir:-"$topdir/input"}
-out_dir=${out_dir:-"$topdir/output"}
+theme=${theme:-"default"}
+theme_dir=${theme_dir:-"$topdir/themes/$theme"}
+in_dir=${in_dir:-"$proj_dir/input"}
+out_dir=${out_dir:-"$topdir/output/$project"}
 
 # widths to scale images to (heights are calculated from source images)
 # you might want to change this for example, if your images aren't full screen on the browser side
@@ -88,24 +115,15 @@ fi
 # file extensions for each video format
 video_format_extensions=("h264" "mp4" "h265" "mp4" "vp9" "webm" "vp8" "webm" "ogv" "ogv")
 
-draft=false
-# the -d flag has been set
-while getopts ":d" opt; do
-  case "$opt" in
-    d)
-		echo "Draft mode On"
-		draft=true
-		# for a quick draft, use lowest resolution, fastest encode rates etc.
-		resolution=(1024)
-		bitrate=(4)
-		video_formats=(h264)
-		download_button=false
-		;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      ;;
-  esac
-done
+if $draft
+then
+	echo "setting up draft mode"
+	# for a quick draft, use lowest resolution, fastest encode rates etc.
+	resolution=(1024)
+	bitrate=(4)
+	video_formats=(h264)
+	download_button=false
+fi
 
 video_enabled=false
 if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1
@@ -450,8 +468,8 @@ do
 done
 
 # build html file for each gallery
-template=$(cat "$scriptdir/$theme_dir/template.html")
-post_template=$(cat "$scriptdir/$theme_dir/post-template.html")
+template=$(cat "$theme_dir/template.html")
+post_template=$(cat "$theme_dir/post-template.html")
 
 gallery_index=0
 firsthtml=""
@@ -495,16 +513,16 @@ do
 			type="video"
 		fi
 		
-		if [ ! -e "$topdir/.cache" ]
+		if [ ! -e "$topdir/.cache/$project" ]
 		then
-			mkdir -p "$topdir/.cache"
+			mkdir -p "$topdir/.cache/$project"
 		fi
 
 		textfile=$(find "$in_dir/$filename".txt "$in_dir/$filename".md ! -path "$file_path" -print -quit 2>/dev/null)
 		
 		metadata=""
 		content=""
-		if [ ! -e "$topdir/.cache/${gallery_md5[gallery_index]}" ]
+		if [ ! -e "$topdir/.cache/$project/${gallery_md5[gallery_index]}" ]
 		then
 			if LC_ALL=C file "$textfile" | grep -q text
 			then
@@ -601,10 +619,10 @@ do
 			
 			post=$(template "$post" type "$type")
 
-			echo "$post" > "$topdir/.cache/${gallery_md5[gallery_index]}"
+			echo "$post" > "$topdir/.cache/$project/${gallery_md5[gallery_index]}"
 
 		else
-			post=$(cat "$topdir/.cache/${gallery_md5[gallery_index]}")
+			post=$(cat "$topdir/.cache/$project/${gallery_md5[gallery_index]}")
 		fi
 
 		html=$(template "$html" content "$post {{content}}" true)
@@ -987,13 +1005,13 @@ do
 		chmod -R 740 "$scratchdir/zip"
 		
 		cd "$scratchdir/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
-		cd "$topdir"
+		cd "$proj_dir"
 	fi
 	
 	rm -rf "${scratchdir:?}/"*
 done
 
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" "$scriptdir/$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" "$theme_dir/" "$out_dir/" >/dev/null
 
 cleanup
