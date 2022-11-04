@@ -470,6 +470,7 @@ done
 # build html file for each gallery
 template=$(cat "$theme_dir/template.html")
 post_template=$(cat "$theme_dir/post-template.html")
+nav_template=$(cat "$theme_dir/nav-template.html")
 
 gallery_index=0
 firsthtml=""
@@ -587,6 +588,12 @@ do
 
 				if [ "$key" ] && [ "$value" ] && [ "$colon" ]
 				then
+					if [ "$key" = "exif_FNumber" ]
+					then
+						fnumber1=$(echo $value | cut -d/ -f1)
+						fnumber2=$(echo $value | cut -d/ -f2)
+						value=$(echo "scale=1; $fnumber1/$fnumber2" | bc)
+					fi
 					post=$(template "$post" "$key" "$value")
 					
 					if [ "$key" = "image-options" ]
@@ -695,7 +702,12 @@ do
 							break
 						fi
 					done
-					navigation+="<li class=\"gallery $active\"  data-image=\"${gallery_url[gindex]}\"><a href=\"{{basepath}}${nav_url[j]}\"><span>${nav_name[j]}</span></a><ul>{{marker$j}}</ul></li>"
+					naventry=$(template "$nav_template" uri "{{basepath}}${nav_url[j]}")
+					naventry=$(template "$naventry" text "${nav_name[j]}")
+					naventry=$(template "$naventry" active "$active")
+					naventry=$(template "$naventry" index "$j")
+					naventry=$(template "$naventry" image "${gallery_url[gindex]}")
+					navigation+=$naventry
 				fi
 				((remaining--))
 			elif [ "${nav_depth[j]}" = "$depth" ]
@@ -1012,6 +1024,6 @@ do
 done
 
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" "$theme_dir/" "$out_dir/" >/dev/null
 
 cleanup

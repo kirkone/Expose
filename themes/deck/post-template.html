@@ -1,0 +1,21 @@
+<article id="{{imagemd5}}" style="--width:{{imagewidth}}; --height:{{imageheight}};">
+	<div>
+		<a href="#{{imagemd5}}">
+			<img
+				loading="lazy"
+				src="./{{resourcepath}}{{imageurl}}/1920.jpg"
+				srcset="
+				./{{resourcepath}}{{imageurl}}/640.jpg 640w,
+				./{{resourcepath}}{{imageurl}}/1024.jpg 1024w,
+				./{{resourcepath}}{{imageurl}}/1280.jpg 1280w,
+				./{{resourcepath}}{{imageurl}}/1920.jpg 1920w,
+				./{{resourcepath}}{{imageurl}}/2560.jpg 2560w,
+				./{{resourcepath}}{{imageurl}}/3840.jpg 3840w
+				"
+				width="{{imagewidth}}"
+				height="{{imageheight}}"
+				alt="Ein Bild"
+				sizes="100vw, 100vh">
+		</a>
+	</div>
+</article>

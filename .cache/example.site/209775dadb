@@ -1,8 +1,8 @@
-<div class="slide" style="color: #ffffff; background-color: #2D491F"
+<div class="slide" style="color: #ffffff; background-color: #182712"
 	data-type="image" data-width="{{width}}" data-height="{{height}}" data-imagewidth="3840"
-	data-imageheight="2559" data-textcolor="#ffffff" data-color1="#142311"
-	data-color2="#2D491F" data-color3="#545220" data-color4="#4C523A" data-color5="#9C6100"
-	data-color6="#D7AF1E" data-color7="#94A583" data-videoformats="{{videoformats}}"
+	data-imageheight="2559" data-textcolor="#ffffff" data-color1="#020C04"
+	data-color2="#182712" data-color3="#2E4920" data-color4="#4E4D2D" data-color5="#9B6100"
+	data-color6="#D3AD20" data-color7="#99A985" data-videoformats="{{videoformats}}"
 	data-polygon='{{polygon}}' data-imagemd5='209775dadb'>
 	<a name="209775dadb" class="internal"></a>
 	
@@ -14,7 +14,7 @@
 	
 	<img class="image blank" src="//:0" width="3840" height="2559" data-url="dsc05297" />
 
-	<div class="exif" style="color: #D7AF1E; background-color: #2D491F">
-		<p>SONY ILCE-7M2 | F:9/1 | 1/40 | 70mm | ISO 100</p>
+	<div class="exif" style="color: #D3AD20; background-color: #182712">
+		<p>SONY ILCE-7M2 | F:9.0 | 1/40 | 70mm | ISO {{exif_ISOSpeedRatings}}</p>
 	</div>
 </div>
