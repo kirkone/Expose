@@ -692,11 +692,7 @@ do
 		((count++))
 		[ -e "$out_dir/$url/$res.jpg" ] && continue
 		
-		# only downscale original image
-		if [ "$width" -ge "$res" ] || [ "$count" -eq "${#resolution[@]}" ]
-		then
-			convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
-		fi
+		convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
 	done
 	
 	# write zip file
