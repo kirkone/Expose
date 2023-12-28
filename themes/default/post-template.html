@@ -1,20 +1,21 @@
-<div class="slide" style="color: {{textcolor}}; background-color: {{backgroundcolor}}"
-	data-type="{{type}}" data-width="{{width}}" data-height="{{height}}" data-imagewidth="{{imagewidth}}"
-	data-imageheight="{{imageheight}}" data-textcolor="{{textcolor}}" data-color1="{{color1}}"
-	data-color2="{{color2}}" data-color3="{{color3}}" data-color4="{{color4}}" data-color5="{{color5}}"
-	data-color6="{{color6}}" data-color7="{{color7}}" data-videoformats="{{videoformats}}"
-	data-polygon='{{polygon}}' data-imagemd5='{{imagemd5}}'>
-	<a name="{{imagemd5}}" class="internal"></a>
-	
-	<div class="post" style="top: {{top:70}}%; left: {{left:20}}%; width: {{width:60}}%; height: {{height:30}}%">
-		<div class="content">
-		{{post}}
-		</div>
+<article id="{{imagemd5}}" style="--width:{{imagewidth}}; --height:{{imageheight}};">
+	<div>
+		<a href="#{{imagemd5}}">
+			<img
+				loading="lazy"
+				src="./{{resourcepath}}{{imageurl}}/1920.jpg"
+				srcset="
+				./{{resourcepath}}{{imageurl}}/640.jpg 640w,
+				./{{resourcepath}}{{imageurl}}/1024.jpg 1024w,
+				./{{resourcepath}}{{imageurl}}/1280.jpg 1280w,
+				./{{resourcepath}}{{imageurl}}/1920.jpg 1920w,
+				./{{resourcepath}}{{imageurl}}/2560.jpg 2560w,
+				./{{resourcepath}}{{imageurl}}/3840.jpg 3840w
+				"
+				width="{{imagewidth}}"
+				height="{{imageheight}}"
+				alt="Ein Bild"
+				sizes="100vw, 100vh">
+		</a>
 	</div>
-	
-	<img class="image blank" src="//:0" width="{{imagewidth}}" height="{{imageheight}}" data-url="{{imageurl}}" />
-
-	<div class="exif" style="color: {{color6}}; background-color: {{backgroundcolor}}">
-		<p>{{exif_Make}} {{exif_Model}} | F:{{exif_FNumber}} | {{exif_ExposureTime}} | {{exif_FocalLengthIn35mmFilm}}mm | ISO {{exif_ISOSpeedRatings}}</p>
-	</div>
-</div>
+</article>
