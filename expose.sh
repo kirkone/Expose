@@ -53,19 +53,6 @@ jpeg_quality=${jpeg_quality:-92}
 # jpeg image autorotation
 autorotate=${autorotate:-true}
 
-# formats to encode to, list in order of preference. Available formats are vp9, vp8, h264, h265, ogv
-video_formats=(h264 vp8)
-
-# video quality - target bitrates in MBit/s matched to each resolution
-# feel free to ignore this if you don't have any videos.
-# the defaults are about 3x vimeo/youtube bitrates to match photographic quality. Personal tolerance to compression artefacts vary, so adjust to taste.
-
-bitrate=(40 24 12 7 4 2)
-
-bitrate_maxratio=${bitrate_maxratio:-2} # a multiple of target bitrate to get max bitrate for VBR encoding. must be > 1. Higher ratio gives better quality on scenes with lots of movement. Ratio=1 reduces to CBR encoding
-
-disable_audio=${disable_audio:-true}
-
 # extract a representative palette for each photo/video and use those colors for background/text/accent etc
 extract_colors=${extract_colors:-true}
 
@@ -86,21 +73,6 @@ social_button=${social_button:-true}
 download_button=${download_button:-false}
 download_readme=${download_readme:-"All rights reserved"}
 
-# disqus forum name. Leave blank to disable comments
-disqus_shortname=${disqus_shortname:-""}
-
-# arbitrary list of extensions we'll assume are video files.
-video_extensions=(3g2 3gp 3gp2 asf avi dvr-ms exr ffindex ffpreset flv gxf h261 h263 h264 h265 ifv m2t m2ts mts m4v mkv mod mov mp4 mpg mxf tod vob webm wmv y4m)
-
-sequence_keyword=${sequence_keyword:-"imagesequence"} # if a directory name contains this keyword, treat it as an image sequence and compile it into a video
-sequence_framerate=${sequence_framerate:-24} # sequence framerat
-
-# specific codec options here
-h264_encodespeed=${h264_encodespeed:-"veryslow"} # h264 encode speed, slower produces better compression results. Options are ultrafast,superfast, veryfast, faster, fast, medium, slow, slower, veryslow
-vp9_encodespeed=${vp9_encodespeed:-1} # VP9 encode speed, 0 is best and slowest, 4 for fastest. VP9 is very slow to encode in general. Note that 0 is dramatically slower than 1 with marginal quality improvement
-
-ffmpeg_threads=${ffmpeg_threads:-0} # the -threads option for ffmpeg encode (0=auto). This could be useful, for example if you need to throttle CPU load on a server that's doing other things.
-
 # script starts here
 
 command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
@@ -112,25 +84,12 @@ then
 	command -v zip >/dev/null 2>&1 || { echo "zip is a required dependency, aborting..." >&2; exit 1; }
 fi
 
-# file extensions for each video format
-video_format_extensions=("h264" "mp4" "h265" "mp4" "vp9" "webm" "vp8" "webm" "ogv" "ogv")
-
 if $draft
 then
 	echo "setting up draft mode"
 	# for a quick draft, use lowest resolution, fastest encode rates etc.
 	resolution=(1024)
-	bitrate=(4)
-	video_formats=(h264)
 	download_button=false
-fi
-
-video_enabled=false
-if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1
-then
-	video_enabled=true
-else
-	echo "FFmpeg not found, videos will not be processed"
 fi
 
 if [ "$autorotate" = true ]
@@ -154,14 +113,11 @@ gallery_files=() # a flat list of all gallery images and videos
 gallery_nav=() # index of nav item the gallery image belongs to
 gallery_url=() # url-friendly name of each image
 gallery_md5=() # md5 hash of original image 
-gallery_type=() # 0 = image, 1 = video, 2 = image sequence
 gallery_maxwidth=() # maximum image size available
 gallery_maxheight=() # maximum height
 gallery_colors=() # extracted color palette for each image
 
 gallery_image_options=() # image commands extracted from post metadata
-gallery_video_options=() # video commands extracted from post metadata
-gallery_video_filters=() # filter commands added to ffmpeg calls
 
 # scan working directory to populate $nav variables
 root_depth=$(echo "$in_dir" | awk -F"/" "{ print NF }")
@@ -198,10 +154,6 @@ output_url=""
 
 cleanup() {
 	echo "Cleaning up"
-	# remove any ffmpeg log/temp files
-	rm -f ffmpeg*.log
-	rm -f ffmpeg*.mbtree
-	rm -f ffmpeg*.temp
 	
 	if [ -d "$scratchdir" ]
     then
@@ -240,23 +192,14 @@ do
 	fi
 		
 	dircount=$(find "$node" -maxdepth 1 -type d ! -path "$node" ! -path "$node*/_*" | wc -l)
-	dircount_sequence=$(find "$node" -maxdepth 1 -type d ! -path "$node" ! -path "$node*/_*" ! -path "$node/*$sequence_keyword*" | wc -l)
 	
 	if [ "$dircount" -gt 0 ]
 	then
-		if [ -z "$sequence_keyword" ] || [ "$dircount_sequence" -gt 0 ]
-		then
-			node_type=0 # dir contains other dirs, it is not a leaf
-		else
-			node_type=1 # dir contains other dirs, but they are imagesequence dirs which are not galleries
-		fi
+
+		node_type=0 # dir contains other dirs, it is not a leaf
 	else
-		if [ ! -z "$sequence_keyword" ] && [ $(echo "$node_name" | grep "$sequence_keyword" | wc -l) -gt 0 ]
-		then
-			continue # dir is an imagesequence dir, it is in effect a video. Do not add to the path list
-		else
-			node_type=1 # does not contain other dirs, and is not image sequence. It is a leaf
-		fi
+		
+		node_type=1 # does not contain other dirs, it is a leaf
 	fi
 	
 	paths+=("$node")
@@ -347,56 +290,18 @@ do
 		
 		image_url=$(echo "$trimmed" | sed 's/[^ a-zA-Z0-9]//g;s/ /-/g' | tr '[:upper:]' '[:lower:]')
 		
-		if [ -d "$file" ] && [ $(echo "$filename" | grep "$sequence_keyword" | wc -l) -gt 0 ]
+		extension=$(echo "${filename##*.}" | tr '[:upper:]' '[:lower:]')
+	
+		# we'll trust that extensions aren't lying
+		if [ "$extension" = "jpg" ] || [ "$extension" = "jpeg" ] || [ "$extension" = "png" ] || [ "$extension" = "gif" ]
 		then
-			format="sequence"
-			image=$(find "$file" -maxdepth 1 ! -path "$file" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort -r | head -n 1)
+			format="$extension"
 		else
-			extension=$(echo "${filename##*.}" | tr '[:upper:]' '[:lower:]')
-		
-			# we'll trust that extensions aren't lying
-			if [ "$extension" = "jpg" ] || [ "$extension" = "jpeg" ] || [ "$extension" = "png" ] || [ "$extension" = "gif" ]
-			then
-				format="$extension"
-			else
-				# could be a video file
-				if [ "$video_enabled" = false ]
-				then
-					continue
-				fi
-				
-				found=false
-				for e in "${video_extensions[@]}"
-				do
-					if [ "$e" = "$extension" ]
-					then
-						found=true
-						break
-					fi
-				done
-				
-				if [ "$found" = false ]
-				then
-					LC_ALL=C file -ib "$filename" | grep video >/dev/null || continue # not image or video or sequence, ignore
-				fi
-				
-				format="video"
-			fi
-		fi
+			continue # not image, ignore
+		fi	
 		
 		
-		if [ "$format" = "video" ]
-		then
-			# generate image from video file first
-			temppath=$(winpath "$scratchdir/temp.jpg")
-			
-			ffmpeg -loglevel error -nostdin -y -i "$filepath" -vf "select=gte(n\,1)" -vframes 1 -qscale:v 2 "$temppath" < /dev/null
-			image="$scratchdir/temp.jpg"
-						
-		elif [ "$format" != "sequence" ]
-		then
-			image="$file"
-		fi
+		image="$file"
 				
 		if [ "$extract_colors" = true ]
 		then
@@ -408,6 +313,7 @@ do
 				palette+="$p"$'\n'
 			done
 		fi
+
 		# If autorotate is enabled, and the EXIF orientation exists, and the orientation is between 5 and 8 (vertical codes)
 		# orientation=$(identify -format "%[EXIF:Orientation]" "$image")
 		# if [ "$autorotate" = true ] && [ -n "$orientation" ] && [ $orientation -ge 5 ] && [ $orientation -le 8 ]
@@ -447,16 +353,6 @@ do
 		gallery_nav+=("$i")
 		gallery_url+=("$image_url")
 		gallery_md5+=("$mdx")
-		
-		if [ "$format" = "sequence" ]
-		then
-			gallery_type+=(2)
-		elif [ "$format" = "video" ]
-		then
-			gallery_type+=(1)
-		else
-			gallery_type+=(0)
-		fi
 		gallery_maxwidth+=("$maxwidth")
 		gallery_maxheight+=("$maxheight")
 		gallery_colors+=("$palette")
@@ -498,7 +394,6 @@ do
 	do	
 		k=$((j+1))
 		file_path="${gallery_files[gallery_index]}"
-		file_type="${gallery_type[gallery_index]}"
 		
 		# try to find a text file with the same name
 		filename=$(basename "$file_path")
@@ -509,10 +404,6 @@ do
 		filedir=$(dirname "$file_path")
 		
 		type="image"
-		if [ "${gallery_type[gallery_index]}" -gt 0 ]
-		then
-			type="video"
-		fi
 		
 		if [ ! -e "$topdir/.cache/$project" ]
 		then
@@ -643,9 +534,7 @@ do
 	#write html file
 	html=$(template "$html" sitetitle "$site_title")
 	html=$(template "$html" gallerytitle "${nav_name[i]}")
-	
-	html=$(template "$html" disqus_shortname "$disqus_shortname")
-	
+		
 	resolutionstring=$(printf "%s " "${resolution[@]}")
 	html=$(template "$html" resolution "$resolutionstring")
 	
@@ -775,7 +664,7 @@ echo "$firsthtml" > "$out_dir"/index.html
 
 printf "\nStarting encode\n"
 
-# resize images, encode videos, compile image sequences
+# resize images
 for i in "${!gallery_files[@]}"
 do
 	echo -e "    ${gallery_url[i]}"
@@ -785,190 +674,7 @@ do
 
 	mkdir -p "$out_dir/$url"
 	
-	if [ "${gallery_type[i]}" = 0 ]
-	then		
-		image="${gallery_files[i]}"
-	else
-		filepath="${gallery_files[i]}"
-		
-		if [ "${gallery_type[i]}" = 2 ]
-		then
-			# compile images into a high-quality video, then treat as normal video
-			seqfinished=true
-			for j in "${!resolution[@]}"
-			do
-				res="${resolution[$j]}"
-				
-				for vformat in "${video_formats[@]}"
-				do				
-					videofile="$res-$vformat."
-					
-					for k in "${!video_format_extensions[@]}"
-					do
-						if [ "${video_format_extensions[k]}" = "$vformat" ]
-						then
-							videofile+="${video_format_extensions[k+1]}"
-							break
-						fi
-					done
-					
-					if [ ! -s "$out_dir/$url/$videofile" ]
-					then
-						seqfinished=false
-						break
-					fi
-				done
-			done
-			
-			if [ "$seqfinished" = true ]
-			then
-				continue
-			fi
-			
-			echo "Compiling sequence images"
-			
-			# ffmpeg's image sequence feature is oddly limited and can't accept arbitrarily named files, copy to scratch dir as sequentially named files
-			j=0
-			while read seqfile
-			do
-				tempname=$(printf "%04d" "$j")
-				cp "$seqfile" "$scratchdir/$tempname"
-				((j++))
-			done < <(find "$filepath" -maxdepth 1 ! -path "$filepath" -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" | sort -r)
-			sequencevideo="$scratchdir/sequencevideo.mp4"
-			
-			maxres=$(printf '%s\n' "${resolution[@]}" | sort -r -n | tail -n 1)
-			
-			ffmpeg -loglevel error -nostdin -f image2 -y -i "$scratchdir/%04d" -c:v libx264 -threads "$ffmpeg_threads" -vf scale="$maxres:trunc(ow/a/2)*2" -profile:v high -pix_fmt yuv420p -preset "$h264_encodespeed" -crf 15 -r "$sequence_framerate" -f mp4 "$sequencevideo"
-			
-			filepath="$sequencevideo"
-		fi
-		
-		filepath=$(winpath "$filepath")
-		
-		# use ffmpeg to encode h264 videos for each resolution
-		dimensions=$(ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width,height "$filepath")
-		width=$(echo "$dimensions" | sed -n 1p | cut -d '=' -f2 )
-		height=$(echo "$dimensions" | sed -n 2p | cut -d '=' -f2 )
-		
-		options=""
-		if [ ! -z "${gallery_video_options[i]}" ]
-		then
-			options="${gallery_video_options[i]}"
-		fi
-		
-		filters=""
-		if [ ! -z "${gallery_video_filters[i]}" ]
-		then
-			filters=",${gallery_video_filters[i]}"
-			filtersfull="-vf ${gallery_video_filters[i]}"
-		fi
-		
-		if [ "$disable_audio" = true ]
-		then
-			audio="-an"
-		else
-			audio="-c:a copy"
-		fi
-		
-		if [ "$draft" = true ]
-		then
-			# if in draft mode, use single pass CRF coding with ultrafast preset
-			output_url=$(winpath "$out_dir/$url/${resolution[0]}-h264.mp4")
-			
-			[ -s "$output_url" ] && continue
-			
-			ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libx264 -threads "$ffmpeg_threads" $options -vf scale="${resolution[0]}:trunc(ow/a/2)*2$filters" -profile:v high -pix_fmt yuv420p -preset ultrafast -crf 26 $audio -movflags +faststart -f mp4 "$output_url"
-		else
-			for vformat in "${video_formats[@]}"
-			do
-				firstpass=false
-				for j in "${!resolution[@]}"
-				do					
-					res="${resolution[$j]}"
-					if [ "$width" -ge "$res" ]
-					then
-						mbit="${bitrate[$j]}"
-						mbitmax=$(( mbit*bitrate_maxratio ))
-						scaled_height=$(( height*res/width ))
-						
-						videofile="$res-$vformat."
-						
-						for k in "${!video_format_extensions[@]}"
-						do
-							if [ "${video_format_extensions[k]}" = "$vformat" ]
-							then
-								videofile+="${video_format_extensions[k+1]}"
-								break
-							fi
-						done
-						
-						[ -s "$out_dir/$url/$videofile" ] && continue
-						
-						output_url=$(winpath "$out_dir/$url/$videofile")
-						nullpath=$(winpath "/dev/null")
-						
-						echo -e "\tEncoding $vformat $res x $scaled_height"
-						
-						# h265 2 pass encode
-						if [ "$vformat" = "h265" ]
-						then
-							if [ "$firstpass" = false ]
-							then
-								firstpass=true # only need to do first pass once
-								ffmpeg -loglevel error -nostdin -y -i "$filepath" -c:v libx265 -threads "$ffmpeg_threads" $options $filtersfull -pix_fmt yuv420p -preset "$h264_encodespeed" -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 1 -an -f mp4 "$nullpath" || continue 2 # if we can't encode the video, skip this file entirely. Possibly not a video file
-							fi
-							
-							ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libx265 -threads "$ffmpeg_threads" $options -vf scale="$res:trunc(ow/a/2)*2$filters" -pix_fmt yuv420p -preset "$h264_encodespeed" -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 2 "$audio" -movflags +faststart -f mp4 "$output_url"
-						
-						# h264 2 pass encode
-						elif [ "$vformat" = "h264" ]
-						then
-							if [ "$firstpass" = false ]
-							then
-								firstpass=true # only need to do first pass once
-								ffmpeg -loglevel error -nostdin -y -i "$filepath" -c:v libx264 -threads "$ffmpeg_threads" $options $filtersfull -profile:v high -pix_fmt yuv420p -preset "$h264_encodespeed" -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 1 -an -f mp4 "$nullpath" || continue 2 # if we can't encode the video, skip this file entirely. Possibly not a video file
-							fi
-							
-							ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libx264 -threads "$ffmpeg_threads" $options -vf scale="$res:trunc(ow/a/2)*2$filters"  -profile:v high -pix_fmt yuv420p -preset "$h264_encodespeed" -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 2 $audio -movflags +faststart -f mp4 "$output_url"
-						
-						# VP9 2 pass encode
-						elif [ "$vformat" = "vp9" ]
-						then
-							if [ "$firstpass" = false ]
-							then
-								firstpass=true # only need to do first pass once
-								ffmpeg -loglevel error -nostdin -y -i "$filepath" -c:v libvpx-vp9 -threads "$ffmpeg_threads" $options $filtersfull -pix_fmt yuv420p -speed 4 -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 1 -an -f webm "$nullpath" || continue 2 # if we can't encode the video, skip this file entirely. Possibly not a video file
-							fi
-							
-							ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libvpx-vp9 -threads "$ffmpeg_threads" $options -vf scale="$res:trunc(ow/a/2)*2$filters" -pix_fmt yuv420p -speed "$vp9_encodespeed" -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 2 $audio -f webm "$output_url"
-						
-						# VP8 2 pass encode
-						elif [ "$vformat" = "vp8" ]
-						then
-							if [ "$firstpass" = false ]
-							then
-								firstpass=true # only need to do first pass once
-								ffmpeg -loglevel error -nostdin -y -i "$filepath" -c:v libvpx -threads "$ffmpeg_threads" $options $filtersfull -pix_fmt yuv420p -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 1 -an -f webm "$nullpath" || continue 2 # if we can't encode the video, skip this file entirely. Possibly not a video file
-							fi
-							
-							ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libvpx -threads "$ffmpeg_threads" $options -vf scale="$res:trunc(ow/a/2)*2$filters" -pix_fmt yuv420p -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M -pass 2 $audio -f webm "$output_url"
-						
-						# Theora 1 pass encode
-						elif [ "$vformat" = "ogv" ]
-						then
-							ffmpeg -loglevel error -nostdin -i "$filepath" -c:v libtheora -threads "$ffmpeg_threads" $options -vf scale="$res:trunc(ow/a/2)*2$filters" -pix_fmt yuv420p -b:v "$mbit"M -maxrate "$mbitmax"M -bufsize "$mbitmax"M $audio "$output_url"
-						fi
-					fi
-				done
-			done
-		fi
-		
-		output_url=""
-		
-		ffmpeg -loglevel error -nostdin -y -i "$filepath" $options -vf "select=gte(n\,1)$filters" -vframes 1 -qscale:v 2 "$scratchdir/temp.jpg"
-		image="$scratchdir/temp.jpg"
-	fi
+	image="${gallery_files[i]}"
 	
 	# generate static images for each resolution
 	width=$(identify -format "%w" "$image")
@@ -977,11 +683,6 @@ do
 	if [ ! -z "${gallery_image_options[i]}" ]
 	then
 		options="${gallery_image_options[i]}"
-	fi
-	
-	if [ "${gallery_type[i]}" = 1 ]
-	then
-		options="" # don't apply image options to a video
 	fi
 	
 	count=0
@@ -1003,12 +704,7 @@ do
 	then
 		mkdir "$scratchdir/zip"
 		
-		if [ "${gallery_type[i]}" = 2 ]
-		then
-			filezip="$sequencevideo"
-		else
-			filezip="${gallery_files[i]}"
-		fi
+		filezip="${gallery_files[i]}"
 		
 		filename=$(basename "$filezip")
 		cp "${gallery_files[i]}" "$scratchdir/zip/$filename"

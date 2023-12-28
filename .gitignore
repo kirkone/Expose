@@ -45,5 +45,5 @@ Temporary Items
 /.cache
 !/.cache/example.site/
 
-projects
+/projects
 !/projects/example.site
