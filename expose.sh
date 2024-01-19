@@ -48,7 +48,7 @@ out_dir=${out_dir:-"$topdir/output/$project"}
 resolution=(3840 2560 1920 1280 1024 640)
 
 # jpeg compression quality for static photos
-jpeg_quality=${jpeg_quality:-92}
+jpeg_quality=${jpeg_quality:-2}
 
 # jpeg image autorotation
 autorotate=${autorotate:-true}
@@ -677,7 +677,8 @@ do
 			((count++))
 			[ -e "$out_dir/$url/$res.jpg" ] && continue
 			
-			convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
+			#convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
+			ffmpeg -i "$image" -vf scale=$res:-1 -qscale:v $jpeg_quality "$out_dir/$url/$res.jpg" -hide_banner -loglevel error
 		done
 		
 		# write zip file
@@ -698,10 +699,10 @@ do
 		fi
 		
 		rm -rf "${scratchdir:?}/$url/"*
-	) & # Running every entry in a background job
+	) #& # Running every entry in a background job
 done
 
-wait # Wait for all background jobs to finish
+#wait # Wait for all background jobs to finish
 
 # copy resources to output
 rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" "$theme_dir/" "$out_dir/" >/dev/null
