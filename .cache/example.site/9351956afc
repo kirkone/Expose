@@ -1,0 +1,21 @@
+<article id="9351956afc" style="--width:3840; --height:2560;">
+	<div>
+		<a href="#9351956afc">
+			<img
+				loading="lazy"
+				src="./{{resourcepath}}4/1920.jpg"
+				srcset="
+				./{{resourcepath}}4/640.jpg 640w,
+				./{{resourcepath}}4/1024.jpg 1024w,
+				./{{resourcepath}}4/1280.jpg 1280w,
+				./{{resourcepath}}4/1920.jpg 1920w,
+				./{{resourcepath}}4/2560.jpg 2560w,
+				./{{resourcepath}}4/3840.jpg 3840w
+				"
+				width="3840"
+				height="2560"
+				alt="Ein Bild"
+				sizes="100vw, 100vh">
+		</a>
+	</div>
+</article>

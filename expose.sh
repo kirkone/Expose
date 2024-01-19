@@ -357,10 +357,10 @@ do
 		gallery_maxheight+=("$maxheight")
 		gallery_colors+=("$palette")
 
-		printf " done"
 	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort -r)
 	
 	nav_count[i]="$index"
+	
 done
 
 # build html file for each gallery
@@ -469,10 +469,8 @@ do
 			
 			post=$(template "$post" post "$content")
 			
-			printf  " "
 			while read line
 			do
-				printf  "."
 				key=$(echo "$line" | cut -d ':' -f1 | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 				value=$(echo "$line" | cut -d ':' -f2- | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 				colon=$(echo "$line" | grep ':')
@@ -490,16 +488,6 @@ do
 					if [ "$key" = "image-options" ]
 					then
 						gallery_image_options[gallery_index]="$value"
-					fi
-					
-					if [ "$key" = "video-options" ]
-					then
-						gallery_video_options[gallery_index]="$value"
-					fi
-					
-					if [ "$key" = "video-filters" ]
-					then
-						gallery_video_filters[gallery_index]="$value"
 					fi
 				fi
 			done < <(echo "$metadata")
@@ -527,8 +515,6 @@ do
 		
 		((gallery_index++))
 		((j++))
-
-		printf " done"
 	done
 	
 	#write html file
@@ -649,14 +635,12 @@ do
 	html=$(echo "$html" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
 	
 	echo "$html" > "$out_dir/${nav_url[i]}"/index.html
-	
 done
 
 printf "\nWrite top level index.html"
 
 basepath="./"
 firsthtml=$(template "$firsthtml" basepath "$basepath")
-firsthtml=$(template "$firsthtml" disqus_identifier "$firstpath")
 firsthtml=$(template "$firsthtml" resourcepath "$firstpath/")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
@@ -667,53 +651,57 @@ printf "\nStarting encode\n"
 # resize images
 for i in "${!gallery_files[@]}"
 do
-	echo -e "    ${gallery_url[i]}"
-	
-	navindex="${gallery_nav[i]}"
-	url="${nav_url[navindex]}/${gallery_url[i]}"
+	(
+		echo -e "    ${gallery_url[i]}"
+		
+		navindex="${gallery_nav[i]}"
+		url="${nav_url[navindex]}/${gallery_url[i]}"
 
-	mkdir -p "$out_dir/$url"
-	
-	image="${gallery_files[i]}"
-	
-	# generate static images for each resolution
-	width=$(identify -format "%w" "$image")
-	
-	options=""
-	if [ ! -z "${gallery_image_options[i]}" ]
-	then
-		options="${gallery_image_options[i]}"
-	fi
-	
-	count=0
-	
-	for res in "${resolution[@]}"
-	do
-		((count++))
-		[ -e "$out_dir/$url/$res.jpg" ] && continue
+		mkdir -p "$out_dir/$url"
 		
-		convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
-	done
-	
-	# write zip file
-	if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
-	then
-		mkdir "$scratchdir/zip"
+		image="${gallery_files[i]}"
 		
-		filezip="${gallery_files[i]}"
+		# generate static images for each resolution
+		width=$(identify -format "%w" "$image")
 		
-		filename=$(basename "$filezip")
-		cp "${gallery_files[i]}" "$scratchdir/zip/$filename"
-		echo "$download_readme" > "$scratchdir/zip/readme.txt"
+		options=""
+		if [ ! -z "${gallery_image_options[i]}" ]
+		then
+			options="${gallery_image_options[i]}"
+		fi
 		
-		chmod -R 740 "$scratchdir/zip"
+		count=0
 		
-		cd "$scratchdir/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
-		cd "$proj_dir"
-	fi
-	
-	rm -rf "${scratchdir:?}/"*
+		for res in "${resolution[@]}"
+		do
+			((count++))
+			[ -e "$out_dir/$url/$res.jpg" ] && continue
+			
+			convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
+		done
+		
+		# write zip file
+		if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
+		then
+			mkdir "$scratchdir/$url/zip"
+			
+			filezip="${gallery_files[i]}"
+			
+			filename=$(basename "$filezip")
+			cp "${gallery_files[i]}" "$scratchdir/$url/zip/$filename"
+			echo "$download_readme" > "$scratchdir/$url/zip/readme.txt"
+			
+			chmod -R 740 "$scratchdir/$url/zip"
+			
+			cd "$scratchdir/$url/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
+			cd "$proj_dir"
+		fi
+		
+		rm -rf "${scratchdir:?}/$url/"*
+	) & # Running every entry in a background job
 done
+
+wait # Wait for all background jobs to finish
 
 # copy resources to output
 rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" "$theme_dir/" "$out_dir/" >/dev/null
