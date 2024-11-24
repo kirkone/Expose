@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "expose",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/expose.sh",
+            "args": [
+                "-p",
+                "example.site"
+            ]
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "onedrive",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/onedrive.sh",
+            "args": [
+                "-p example.site"
+            ]
+        }
+    ]
+}
