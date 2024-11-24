@@ -119,7 +119,7 @@ label[for=nav-trigger] span:first-child {
   transform: translateX(-110%) translateY(5%) rotate(135deg);
 }
 
-menu {
+body > menu {
   grid-column: full-width;
   position: fixed;
   height: 100dvh;
@@ -141,28 +141,28 @@ menu {
   backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-3xl);
 }
-menu section {
+body > menu section {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: flex-start;
 }
-menu section h3 {
+body > menu section h3 {
   font-weight: 100;
   font-size: var(--font-size-3);
   margin-bottom: var(--space-s);
 }
-menu section a {
+body > menu section a {
   font-weight: 100;
   font-size: var(--font-size-3);
   text-decoration: none;
   color: hsl(var(--color-light-hsl));
 }
-menu section a:hover {
+body > menu section a:hover {
   color: hsl(var(--color-dark-hsl));
 }
-menu section a.active {
+body > menu section a.active {
   color: hsl(var(--color-dark-hsl));
 }
 
@@ -325,7 +325,7 @@ main .gallery > article figure {
   opacity: 0;
   justify-content: center;
   align-items: center;
-  background-color: hsl(var(--color-background-hsl)/0.8);
+  background-color: hsl(var(--color-background-hsl)/0.85);
   -webkit-backdrop-filter: saturate(180%) blur(2rem);
   backdrop-filter: saturate(180%) blur(2rem);
   cursor: default;
@@ -381,6 +381,7 @@ main .gallery > article figure img {
   height: auto;
   max-width: 100dvw;
   max-height: calc( 100dvh - (var(--space-m) * 2));
+  box-shadow: 0px 0px var(--space-l) 0px hsl(var(--color-background-hsl));
 }
 main .gallery > article:focus > picture + aside, main .gallery > article:target > picture + aside {
   display: flex;
@@ -400,6 +401,14 @@ main .gallery > article:focus figure, main .gallery > article:target figure {
     opacity: 0;
   }
 }
+main .gallery > article:focus figure img, main .gallery > article:target figure img {
+  transition: all var(--animation-time);
+}
+main .gallery > article:focus figure.zooming img, main .gallery > article:target figure.zooming img {
+  transition: none;
+  transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
+  -webkit-transform: translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale));
+}
 main .gallery:after {
   content: " ";
   flex-grow: 1000000000;
@@ -410,21 +419,51 @@ main .gallery:after {
 }
 
 footer {
-  display: grid;
-  grid-column: full-width;
-  grid-template-columns: inherit;
+  grid-column: breakout;
+  display: flex;
   z-index: 100;
   background: hsl(var(--color-background-hsl));
   align-items: start;
-  justify-items: end;
+  justify-content: space-between;
   height: calc(100dvh - var(--space-2xl) + 1px);
   outline: solid var(--space-m) hsl(var(--color-background-hsl));
+  padding-top: var(--space-l);
 }
 footer div {
-  grid-column: breakout;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: var(--font-size-2);
+  font-size: var(--font-size-1);
   color: hsl(var(--color-light-hsl));
+  text-wrap: nowrap;
+}
+footer menu {
+  grid-column: content;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: center;
+  gap: var(--space-m);
+}
+footer menu section {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+footer menu section h4 {
+  font-weight: 100;
+  font-size: var(--font-size-1);
+  margin-bottom: var(--space-xs);
+}
+footer menu section a {
+  font-weight: 100;
+  font-size: var(--font-size-1);
+  text-decoration: none;
+  color: hsl(var(--color-light-hsl));
+}
+footer menu section a:hover {
+  color: hsl(var(--color-dark-hsl));
+}
+footer menu section a.active {
+  color: hsl(var(--color-dark-hsl));
 }
