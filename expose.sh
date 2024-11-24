@@ -45,7 +45,7 @@ out_dir=${out_dir:-"$topdir/output/$project"}
 
 # widths to scale images to (heights are calculated from source images)
 # you might want to change this for example, if your images aren't full screen on the browser side
-resolution=(3840 2560 1920 1280 1024 640)
+resolution=(3840 2560 1920 1280 1024 640 320 160 80)
 
 # jpeg compression quality for static photos
 jpeg_quality=${jpeg_quality:-2}
@@ -206,7 +206,7 @@ do
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-done < <(find "$in_dir" -type d ! -path "$in_dir" ! -path "$in_dir*/_*" | sort)
+done < <(find "$in_dir" -type d ! -path "$in_dir" ! -path "$in_dir*/_*" | sort -r)
 
 # re-create directory structure
 mkdir -p "$out_dir"
@@ -482,6 +482,10 @@ do
 						fnumber1=$(echo $value | cut -d/ -f1)
 						fnumber2=$(echo $value | cut -d/ -f2)
 						value=$(echo "scale=1; $fnumber1/$fnumber2" | bc)
+					elif [ "$key" = "exif_LensModel" ]; then
+						value=$(echo $value | sed 's/ (.*)//')
+					elif [ "$key" = "exif_Model" ]; then
+						value=$(echo $value| sed -e 's/ILCE-7M4/α 7 IV/' -e 's/ILCE-7M3/α 7 III/' -e 's/ILCE-7M2/α 7 II/' -e 's/ILCE-7/α 7/' -e 's/ILCE-7RM5/α 7R V/' -e 's/ILCE-7RM4/α 7R IV/' -e 's/ILCE-7RM3/α 7R III/' -e 's/ILCE-7RM2/α 7R II/' -e 's/ILCE-7R/α 7R/' -e 's/ILCE-7SM3/α 7S III/' -e 's/ILCE-7SM2/α 7S II/' -e 's/ILCE-7S/α 7S/')
 					fi
 					post=$(template "$post" "$key" "$value")
 					
@@ -651,59 +655,59 @@ printf "\nStarting encode\n"
 # resize images
 for i in "${!gallery_files[@]}"
 do
-	(
-		echo -e "    ${gallery_url[i]}"
-		
-		navindex="${gallery_nav[i]}"
-		url="${nav_url[navindex]}/${gallery_url[i]}"
+    echo -e "    ${gallery_url[i]}"
+    
+    navindex="${gallery_nav[i]}"
+    url="${nav_url[navindex]}/${gallery_url[i]}"
 
-		mkdir -p "$out_dir/$url"
-		
-		image="${gallery_files[i]}"
-		
-		# generate static images for each resolution
-		width=$(identify -format "%w" "$image")
-		
-		options=""
-		if [ ! -z "${gallery_image_options[i]}" ]
-		then
-			options="${gallery_image_options[i]}"
-		fi
-		
-		count=0
-		
-		for res in "${resolution[@]}"
-		do
-			((count++))
-			[ -e "$out_dir/$url/$res.jpg" ] && continue
-			
-			#convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
-			ffmpeg -i "$image" -vf scale=$res:-1 -qscale:v $jpeg_quality "$out_dir/$url/$res.jpg" -hide_banner -loglevel error
-		done
-		
-		# write zip file
-		if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
-		then
-			mkdir "$scratchdir/$url/zip"
-			
-			filezip="${gallery_files[i]}"
-			
-			filename=$(basename "$filezip")
-			cp "${gallery_files[i]}" "$scratchdir/$url/zip/$filename"
-			echo "$download_readme" > "$scratchdir/$url/zip/readme.txt"
-			
-			chmod -R 740 "$scratchdir/$url/zip"
-			
-			cd "$scratchdir/$url/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
-			cd "$proj_dir"
-		fi
-		
-		rm -rf "${scratchdir:?}/$url/"*
-	) #& # Running every entry in a background job
+    mkdir -p "$out_dir/$url"
+    
+    image="${gallery_files[i]}"
+    
+    # generate static images for each resolution
+    width=$(identify -format "%w" "$image")
+    
+    options=""
+    if [ ! -z "${gallery_image_options[i]}" ]
+    then
+      options="${gallery_image_options[i]}"
+    fi
+    
+    count=0
+    
+    for res in "${resolution[@]}"
+    do
+      ((count++))
+      [ -e "$out_dir/$url/$res.jpg" ] && continue
+      (
+        #convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
+        ffmpeg -i "$image" -vf scale=$res:-1 -qscale:v $jpeg_quality "$out_dir/$url/$res.jpg" -hide_banner -loglevel error
+      ) &
+    done
+    wait
+    
+    # write zip file
+    if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
+    then
+      mkdir "$scratchdir/$url/zip"
+      
+      filezip="${gallery_files[i]}"
+      
+      filename=$(basename "$filezip")
+      cp "${gallery_files[i]}" "$scratchdir/$url/zip/$filename"
+      echo "$download_readme" > "$scratchdir/$url/zip/readme.txt"
+      
+      chmod -R 740 "$scratchdir/$url/zip"
+      
+      cd "$scratchdir/$url/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
+      cd "$proj_dir"
+    fi
+    
+    rm -rf "${scratchdir:?}/$url/"*
 done
 
-#wait # Wait for all background jobs to finish
 
+printf "\nCopying resources\n"
 # copy resources to output
 rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" "$theme_dir/" "$out_dir/" >/dev/null
 
