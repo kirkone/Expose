@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>{{sitetitle}} - {{gallerytitle}}</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link type="text/css" rel="stylesheet" media="all" href="{{basepath}}main.css" />
+</head>
+
+<body>
+	<input type="checkbox" id="nav-trigger" class="nav-trigger">
+	
+	<menu>
+		<section>
+			<h3>Years</h3>
+			{{navigation}}
+		</section>
+	</menu>
+
+	<header>
+		<div>
+		  <h2>
+			<label for="nav-trigger" title="Menu">
+			  <span>Menu</span>
+			  <span>i</span>
+			  <span>i</span>
+			  <span>i</span>
+			</label>
+			<a href="/">Kirsten Kluge</a>
+		  </h2>
+		  <nav>
+			
+		  </nav>
+		</div>
+	</header>
+
+	<main>
+		<h2>{{gallerytitle}}</h2>
+		<section class="gallery">
+			{{content}}
+		</section>
+	</main>
+
+	<footer>
+		<div>
+		  © 2024 Kirsten Kluge
+		</div>
+	</footer>
+</body>
+
+</html>
