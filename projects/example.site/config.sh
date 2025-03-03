@@ -1,5 +1,5 @@
 site_title="example.site"
-theme="default"
+theme="photo"
 text_toggle=false
 social_button=false
 download_button=false
