@@ -78,6 +78,7 @@ download_readme=${download_readme:-"All rights reserved"}
 
 command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
 command -v identify >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
+command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg is a required dependency, aborting..." >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "rsync is a required dependency, aborting..." >&2; exit 1; }
 
 if [ "$download_button" = true ]
