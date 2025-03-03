@@ -37,6 +37,7 @@ if [ -f "$proj_dir/config.sh" ]; then
 fi
 
 site_title=${site_title:-"My Awesome Photos"}
+site_copyright=${site_copyright:-"© $(date +%Y)"}
 
 theme=${theme:-"default"}
 theme_dir=${theme_dir:-"$topdir/themes/$theme"}
@@ -523,6 +524,7 @@ do
 	
 	#write html file
 	html=$(template "$html" sitetitle "$site_title")
+	html=$(template "$html" sitecopyright "$site_copyright")
 	html=$(template "$html" gallerytitle "${nav_name[i]}")
 		
 	resolutionstring=$(printf "%s " "${resolution[@]}")
