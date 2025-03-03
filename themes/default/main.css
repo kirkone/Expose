@@ -445,7 +445,6 @@ main .gallery:after {
   background: hsl(var(--color-background-hsl));
   position: relative;
   outline: solid var(--space-3xs) hsl(var(--color-background-hsl));
-  heigth: 200%;
 }
 
 footer {
