@@ -1,8 +1,21 @@
-<article id="8f2c6537ee" style="--width:2560; --height:3840;">
-	<div>
-		<a href="#8f2c6537ee">
+<article tabindex="0" id="8f2c6537ee" style="--width:2560; --height:3840;">
+	<picture>
+		<img alt="" loading="lazy" decoding="async" src="./{{resourcepath}}3/640.jpg" width="2560" height="3840">
+	</picture>
+	<aside>
+		<p>
+			F8.0 13/1 ISO100 68mm
+		</p>
+		<p>
+			Sony FE 24-105mm F4 G OSS on α 7 III
+		</p>
+	</aside>
+	<figure>
+		<a tabindex="-1" title="close">close</a>
+		<picture>
 			<img
 				loading="lazy"
+				decoding="async"
 				src="./{{resourcepath}}3/1920.jpg"
 				srcset="
 				./{{resourcepath}}3/640.jpg 640w,
@@ -14,8 +27,8 @@
 				"
 				width="2560"
 				height="3840"
-				alt="Ein Bild"
-				sizes="100vw, 100vh">
-		</a>
-	</div>
+				alt=""
+				>
+		</picture>
+	</figure>
 </article>

@@ -1,8 +1,21 @@
-<article id="1facd9b071" style="--width:3840; --height:2560;">
-	<div>
-		<a href="#1facd9b071">
+<article tabindex="0" id="1facd9b071" style="--width:3840; --height:2560;">
+	<picture>
+		<img alt="" loading="lazy" decoding="async" src="./{{resourcepath}}1/640.jpg" width="3840" height="2560">
+	</picture>
+	<aside>
+		<p>
+			F4.0 6/1 ISO100 42mm
+		</p>
+		<p>
+			Zeiss Vario-Tessar T* FE 24-70 mm F4 ZA OSS on α 7 II
+		</p>
+	</aside>
+	<figure>
+		<a tabindex="-1" title="close">close</a>
+		<picture>
 			<img
 				loading="lazy"
+				decoding="async"
 				src="./{{resourcepath}}1/1920.jpg"
 				srcset="
 				./{{resourcepath}}1/640.jpg 640w,
@@ -14,8 +27,8 @@
 				"
 				width="3840"
 				height="2560"
-				alt="Ein Bild"
-				sizes="100vw, 100vh">
-		</a>
-	</div>
+				alt=""
+				>
+		</picture>
+	</figure>
 </article>
