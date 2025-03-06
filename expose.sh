@@ -51,10 +51,7 @@ resolution=(3840 2560 1920 1280 1024 640 320 160 80)
 # jpeg compression quality for static photos
 jpeg_quality=${jpeg_quality:-2}
 
-# jpeg image autorotation
-autorotate=${autorotate:-true}
-
-# extract a representative palette for each photo/video and use those colors for background/text/accent etc
+# extract a representative palette for each photo and use those colors for background/text/accent etc
 extract_colors=${extract_colors:-true}
 
 backgroundcolor=${backgroundcolor:-"#000000"} # slide background, visible only before image has loaded
@@ -65,15 +62,6 @@ default_palette=${default_palette:-("#000000" "#222222" "#444444" "#666666" "#99
 
 override_textcolor=${override_textcolor:-true} # use given text color instead of extracted palette on body text.
 
-# display a toggle button to show/hide the text
-text_toggle=${text_toggle:-true}
-
-social_button=${social_button:-true}
-
-# option to put the full image/video in a zip file with a license readme.txt
-download_button=${download_button:-false}
-download_readme=${download_readme:-"All rights reserved"}
-
 # script starts here
 
 command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
@@ -81,24 +69,11 @@ command -v identify >/dev/null 2>&1 || { echo "ImageMagick is a required depende
 command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg is a required dependency, aborting..." >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "rsync is a required dependency, aborting..." >&2; exit 1; }
 
-if [ "$download_button" = true ]
-then
-	command -v zip >/dev/null 2>&1 || { echo "zip is a required dependency, aborting..." >&2; exit 1; }
-fi
-
 if $draft
 then
 	echo "setting up draft mode"
 	# for a quick draft, use lowest resolution, fastest encode rates etc.
 	resolution=(1024)
-	download_button=false
-fi
-
-if [ "$autorotate" = true ]
-then
-	autorotateoption=" -auto-orient "
-else
-	autorotateoption=""
 fi
 
 # directory structure will form nav structure
@@ -111,7 +86,7 @@ nav_count=() # the number of images in each gallery, or -1 if not a leaf
 
 metadata_file="metadata.txt" # search for this file in each gallery directory for gallery-wide metadata
 
-gallery_files=() # a flat list of all gallery images and videos
+gallery_files=() # a flat list of all gallery images
 gallery_nav=() # index of nav item the gallery image belongs to
 gallery_url=() # url-friendly name of each image
 gallery_md5=() # md5 hash of original image 
@@ -119,20 +94,8 @@ gallery_maxwidth=() # maximum image size available
 gallery_maxheight=() # maximum height
 gallery_colors=() # extracted color palette for each image
 
-gallery_image_options=() # image commands extracted from post metadata
-
 # scan working directory to populate $nav variables
 root_depth=$(echo "$in_dir" | awk -F"/" "{ print NF }")
-
-# if on cygwin, transforms given param to windows style path
-winpath () {
-	if command -v cygpath >/dev/null 2>&1
-	then
-		cygpath -m "$1"
-	else
-		echo "$1"
-	fi
-}
 
 # $1: template, $2: {{ variable name }}, $3: replacement string
 template () {
@@ -143,7 +106,6 @@ template () {
 }
 
 scratchdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'exposetempdir')
-scratchdir=$(winpath "$scratchdir")
 
 if [ -z "$scratchdir" ]
 then
@@ -279,7 +241,7 @@ do
 		
 		filename=$(basename "$file")
 		filedir=$(dirname "$file")
-		filepath=$(winpath "$file")
+		filepath="$file"
 		
 		printf "\n    $filename"
 		
@@ -316,17 +278,8 @@ do
 			done
 		fi
 
-		# If autorotate is enabled, and the EXIF orientation exists, and the orientation is between 5 and 8 (vertical codes)
-		# orientation=$(identify -format "%[EXIF:Orientation]" "$image")
-		# if [ "$autorotate" = true ] && [ -n "$orientation" ] && [ $orientation -ge 5 ] && [ $orientation -le 8 ]
-		# then
-			# If the image is rotated, swap the height and width
-			# width=$(identify -format "%h" "$image")
-			# height=$(identify -format "%w" "$image")
-		# else
-			width=$(identify -format "%w" "$image")
-			height=$(identify -format "%h" "$image")
-		# fi
+		width=$(identify -format "%w" "$image")
+		height=$(identify -format "%h" "$image")
 
 		maxwidth=0
 		maxheight=0
@@ -404,9 +357,7 @@ do
 		filename="${filename%.*}"
 
 		filedir=$(dirname "$file_path")
-		
-		type="image"
-		
+				
 		if [ ! -e "$topdir/.cache/$project" ]
 		then
 			mkdir -p "$topdir/.cache/$project"
@@ -490,11 +441,6 @@ do
 						value=$(echo $value| sed -e 's/ILCE-7M4/α 7 IV/' -e 's/ILCE-7M3/α 7 III/' -e 's/ILCE-7M2/α 7 II/' -e 's/ILCE-7/α 7/' -e 's/ILCE-7RM5/α 7R V/' -e 's/ILCE-7RM4/α 7R IV/' -e 's/ILCE-7RM3/α 7R III/' -e 's/ILCE-7RM2/α 7R II/' -e 's/ILCE-7R/α 7R/' -e 's/ILCE-7SM3/α 7S III/' -e 's/ILCE-7SM2/α 7S II/' -e 's/ILCE-7S/α 7S/')
 					fi
 					post=$(template "$post" "$key" "$value")
-					
-					if [ "$key" = "image-options" ]
-					then
-						gallery_image_options[gallery_index]="$value"
-					fi
 				fi
 			done < <(echo "$metadata")
 			
@@ -509,8 +455,6 @@ do
 			post=$(template "$post" textcolor "$textcolor")
 			post=$(template "$post" backgroundcolor "$backgroundcolor")
 			
-			post=$(template "$post" type "$type")
-
 			echo "$post" > "$topdir/.cache/$project/${gallery_md5[gallery_index]}"
 
 		else
@@ -530,19 +474,7 @@ do
 		
 	resolutionstring=$(printf "%s " "${resolution[@]}")
 	html=$(template "$html" resolution "$resolutionstring")
-	
-	formatstring=$(printf "%s " "${video_formats[@]}")
-	html=$(template "$html" videoformats "$formatstring")
-	
-	display=$([ "$text_toggle" = true ] && echo "block" || echo "none")
-	html=$(template "$html" text_toggle "$display")
-	
-	display=$([ "$social_button" = true ] && echo "block" || echo "none")
-	html=$(template "$html" social_button "$display")
-	
-	display=$([ "$download_button" = true ] && echo "block" || echo "none")
-	html=$(template "$html" download_button "$display")
-	
+			
 	# build main navigation
 	navigation=""
 	
@@ -633,7 +565,6 @@ do
 	fi
 	
 	html=$(template "$html" basepath "$basepath")
-	html=$(template "$html" disqus_identifier "${nav_url[i]}")
 	
 	# set default values for {{XXX:default}} strings
 	html=$(echo "$html" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
@@ -669,13 +600,7 @@ do
     
     # generate static images for each resolution
     width=$(identify -format "%w" "$image")
-    
-    options=""
-    if [ ! -z "${gallery_image_options[i]}" ]
-    then
-      options="${gallery_image_options[i]}"
-    fi
-    
+        
     count=0
     
     for res in "${resolution[@]}"
@@ -683,29 +608,11 @@ do
       ((count++))
       [ -e "$out_dir/$url/$res.jpg" ] && continue
       (
-        #convert $autorotateoption -size "$res"x"$res" "$image" -resize "$res"x"$res" -quality "$jpeg_quality" +profile '*' $options "$out_dir/$url/$res.jpg"
         ffmpeg -i "$image" -vf scale=$res:-1 -qscale:v $jpeg_quality "$out_dir/$url/$res.jpg" -hide_banner -loglevel error
       ) &
     done
     wait
-    
-    # write zip file
-    if [ "$download_button" = true ] && [ ! -e "$out_dir/$url/${gallery_url[i]}.zip" ]
-    then
-      mkdir "$scratchdir/$url/zip"
-      
-      filezip="${gallery_files[i]}"
-      
-      filename=$(basename "$filezip")
-      cp "${gallery_files[i]}" "$scratchdir/$url/zip/$filename"
-      echo "$download_readme" > "$scratchdir/$url/zip/readme.txt"
-      
-      chmod -R 740 "$scratchdir/$url/zip"
-      
-      cd "$scratchdir/$url/zip" && zip -r -0 "$out_dir/$url/${gallery_url[i]}.zip" ./
-      cd "$proj_dir"
-    fi
-    
+        
     rm -rf "${scratchdir:?}/$url/"*
 done
 
