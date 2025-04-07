@@ -57,7 +57,6 @@ jpeg_quality=${jpeg_quality:-85}
 
 # script starts here
 
-command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
 command -v exiftool >/dev/null 2>&1 || { echo "EXIFTool is a required dependency, aborting..." >&2; exit 1; }
 command -v vips >/dev/null 2>&1 || { echo "vips is a required dependency, aborting..." >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "rsync is a required dependency, aborting..." >&2; exit 1; }
