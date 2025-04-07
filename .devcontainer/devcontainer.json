@@ -7,6 +7,7 @@
         // Path is relative to the devcontainer.json file.
         "dockerfile": "dockerfile"
     },
+	"postCreateCommand": "./setup.sh",
 
 	"remoteUser": "root",
 	"customizations": {
@@ -16,5 +17,8 @@
 				"rogalmic.bash-debug"
 			]
 		}
-	}
+	},
+	"mounts": [
+    	"type=tmpfs,destination=/tmpfs,tmpfs-mode=1777"
+	]
 }

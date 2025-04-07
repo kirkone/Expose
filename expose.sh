@@ -31,9 +31,9 @@ done
 
 # configuration
 
-# Source configuration file if it exists in the project directory
+# Source project configuration file if it exists in the project directory
 if [ -f "$proj_dir/config.sh" ]; then
-  . "$proj_dir/config.sh"
+	. "$proj_dir/config.sh"
 fi
 
 site_title=${site_title:-"My Awesome Photos"}
@@ -44,29 +44,22 @@ theme_dir=${theme_dir:-"$topdir/themes/$theme"}
 in_dir=${in_dir:-"$proj_dir/input"}
 out_dir=${out_dir:-"$topdir/output/$project"}
 
+# Source theme configuration file if it exists in the theme directory
+if [ -f "$theme_dir/config.sh" ]; then
+  	. "$theme_dir/config.sh"
+fi
+
 # widths to scale images to (heights are calculated from source images)
-# you might want to change this for example, if your images aren't full screen on the browser side
-resolution=(3840 2560 1920 1280 1024 640 320 160 80)
+resolution=${resolution:-(2560 1920 1280 1024 640)}
 
 # jpeg compression quality for static photos
-jpeg_quality=${jpeg_quality:-2}
-
-# extract a representative palette for each photo and use those colors for background/text/accent etc
-extract_colors=${extract_colors:-true}
-
-backgroundcolor=${backgroundcolor:-"#000000"} # slide background, visible only before image has loaded
-textcolor=${textcolor:-"#ffffff"} # default text color
-
-# palette of 7 colors, background to foreground, to be used if color extraction is disabled
-default_palette=${default_palette:-("#000000" "#222222" "#444444" "#666666" "#999999" "#cccccc" "#ffffff")}
-
-override_textcolor=${override_textcolor:-true} # use given text color instead of extracted palette on body text.
+jpeg_quality=${jpeg_quality:-85}
 
 # script starts here
 
 command -v convert >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
-command -v identify >/dev/null 2>&1 || { echo "ImageMagick is a required dependency, aborting..." >&2; exit 1; }
-command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg is a required dependency, aborting..." >&2; exit 1; }
+command -v exiftool >/dev/null 2>&1 || { echo "EXIFTool is a required dependency, aborting..." >&2; exit 1; }
+command -v vips >/dev/null 2>&1 || { echo "vips is a required dependency, aborting..." >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || { echo "rsync is a required dependency, aborting..." >&2; exit 1; }
 
 if $draft
@@ -92,7 +85,6 @@ gallery_url=() # url-friendly name of each image
 gallery_md5=() # md5 hash of original image 
 gallery_maxwidth=() # maximum image size available
 gallery_maxheight=() # maximum height
-gallery_colors=() # extracted color palette for each image
 
 # scan working directory to populate $nav variables
 root_depth=$(echo "$in_dir" | awk -F"/" "{ print NF }")
@@ -105,29 +97,24 @@ template () {
 	echo "$1" | sed "s/{{$key}}/$value/g; s/{{$key:[^}]*}}/$value/g"
 }
 
-scratchdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'exposetempdir')
+tmpdir=$(mktemp -d -p /tmpfs -t expose.XXXXXXXX)
 
-if [ -z "$scratchdir" ]
+if [ -z "$tmpdir" ]
 then
 	echo "Could not create scratch directory" >&2; exit 1;
 fi
 
-chmod -R 740 "$scratchdir"
+chmod -R 740 "$tmpdir"
 
-output_url=""
+printf "temp directory: $tmpdir\n"
 
 cleanup() {
 	echo "Cleaning up"
 	
-	if [ -d "$scratchdir" ]
+	if [ -d "$tmpdir" ]
     then
-        rm -r "$scratchdir"
+        rm -r "$tmpdir"
     fi
-	
-	if [ -e "$output_url" ]
-	then
-		rm -f "$output_url"
-	fi
 	
 	echo "    done"
 	exit
@@ -135,7 +122,7 @@ cleanup() {
 
 trap cleanup INT TERM
 
-printf "Scanning directories "
+printf "\nScanning directories\n    "
 
 while read node
 do
@@ -178,7 +165,7 @@ mkdir -p "$out_dir"
 dir_stack=()
 url_rel=""
 
-printf " done\nPopulating nav "
+printf "\n    done\nPopulating nav\n    "
 
 for i in "${!paths[@]}"
 do
@@ -216,7 +203,7 @@ do
 	nav_url+=("$url")
 done
 
-printf " done\nReading files"
+printf "\n    done\nReading files"
 
 # read in each file to populate $gallery variables
 for i in "${!paths[@]}"
@@ -231,6 +218,8 @@ do
 	name="${nav_name[i]}"
 	url="${nav_url[i]}"
 
+	printf "\n    $url"
+
 	mkdir -p "$out_dir"/"$url"
 
 	index=0
@@ -243,7 +232,7 @@ do
 		filedir=$(dirname "$file")
 		filepath="$file"
 		
-		printf "\n    $filename"
+		printf "\n        $filename"
 		
 		trimmed=$(echo "${filename%.*}" | sed -e 's/^[[:space:]0-9]*//;s/[[:space:]]*$//')
 		
@@ -266,20 +255,11 @@ do
 		
 		
 		image="$file"
-				
-		if [ "$extract_colors" = true ]
-		then
-			palette=$(convert "$image" -resize 200x200 -depth 4 +dither -colors 7 -unique-colors txt:- | tail -n +2 | awk 'BEGIN{RS=" "} /#/ {print}' 2>&1)
-		else
-			palette=""
-			for p in "${default_palette[@]}"
-			do
-				palette+="$p"$'\n'
-			done
-		fi
-
-		width=$(identify -format "%w" "$image")
-		height=$(identify -format "%h" "$image")
+		
+		# Get the width of the image
+		width=$(vipsheader -f width "$image")
+		# Get the height of the image
+		height=$(vipsheader -f height "$image")
 
 		maxwidth=0
 		maxheight=0
@@ -310,13 +290,14 @@ do
 		gallery_md5+=("$mdx")
 		gallery_maxwidth+=("$maxwidth")
 		gallery_maxheight+=("$maxheight")
-		gallery_colors+=("$palette")
 
 	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort -r)
 	
 	nav_count[i]="$index"
 	
 done
+
+printf "\n    done"
 
 # build html file for each gallery
 template=$(cat "$theme_dir/template.html")
@@ -335,6 +316,8 @@ do
 	then
 		continue
 	fi
+
+	printf "\n    ${nav_url[i]}"
 	
 	html="$template"
 	
@@ -352,7 +335,7 @@ do
 		
 		# try to find a text file with the same name
 		filename=$(basename "$file_path")
-		printf "\n    $filename" # show progress
+		printf "\n        $filename" # show progress
 		
 		filename="${filename%.*}"
 
@@ -390,26 +373,13 @@ do
 			fi
 			
 			exif_metadata=""
-			exif_metadata=$(identify -format "%[EXIF:*]" "$file_path" | sed 's/\:/_/g' | sed 's/=/\:/g')
+			exif_metadata=$(exiftool -s2 "$file_path" | sed 's/\: /:/g' | sed 's/^/exif_/')
 
 			metadata+=$'\n'
 			metadata+="$gallery_metadata"
 			metadata+=$'\n'
 			metadata+="$exif_metadata"
 			metadata+=$'\n'
-
-			z=1
-			while read line
-			do
-				# add generated palette to metadata
-				metadata="$metadata""color$z:$line"$'\n'
-				((z++))
-			done < <(echo "${gallery_colors[gallery_index]}")
-			backgroundcolor=$(echo "${gallery_colors[gallery_index]}" | sed -n 2p)
-			if [ "$override_textcolor" = false ]
-			then
-				textcolor=$(echo "${gallery_colors[gallery_index]}" | tail -1)
-			fi
 			
 			# if perl available, pass content through markdown parser
 			if command -v perl >/dev/null 2>&1
@@ -430,12 +400,7 @@ do
 
 				if [ "$key" ] && [ "$value" ] && [ "$colon" ]
 				then
-					if [ "$key" = "exif_FNumber" ]
-					then
-						fnumber1=$(echo $value | cut -d/ -f1)
-						fnumber2=$(echo $value | cut -d/ -f2)
-						value=$(echo "scale=1; $fnumber1/$fnumber2" | bc)
-					elif [ "$key" = "exif_LensModel" ]; then
+					if [ "$key" = "exif_LensModel" ]; then
 						value=$(echo $value | sed 's/ (.*)//')
 					elif [ "$key" = "exif_Model" ]; then
 						value=$(echo $value| sed -e 's/ILCE-7M4/α 7 IV/' -e 's/ILCE-7M3/α 7 III/' -e 's/ILCE-7M2/α 7 II/' -e 's/ILCE-7/α 7/' -e 's/ILCE-7RM5/α 7R V/' -e 's/ILCE-7RM4/α 7R IV/' -e 's/ILCE-7RM3/α 7R III/' -e 's/ILCE-7RM2/α 7R II/' -e 's/ILCE-7R/α 7R/' -e 's/ILCE-7SM3/α 7S III/' -e 's/ILCE-7SM2/α 7S II/' -e 's/ILCE-7S/α 7S/')
@@ -450,10 +415,6 @@ do
 			post=$(template "$post" imagewidth "${gallery_maxwidth[gallery_index]}")
 			
 			post=$(template "$post" imageheight "${gallery_maxheight[gallery_index]}")
-			
-			# set colors
-			post=$(template "$post" textcolor "$textcolor")
-			post=$(template "$post" backgroundcolor "$backgroundcolor")
 			
 			echo "$post" > "$topdir/.cache/$project/${gallery_md5[gallery_index]}"
 
@@ -571,9 +532,13 @@ do
 	
 	# remove references to any unused {{xxx}} template variables and empty <ul>s from navigation
 	html=$(echo "$html" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
+
+	printf "\n        Write index.html"
 	
 	echo "$html" > "$out_dir/${nav_url[i]}"/index.html
 done
+
+printf "\n    done"
 
 printf "\nWrite top level index.html"
 
@@ -584,12 +549,13 @@ firsthtml=$(echo "$firsthtml" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
 echo "$firsthtml" > "$out_dir"/index.html
 
+printf "\n    done"
 printf "\nStarting encode\n"
 
 # resize images
 for i in "${!gallery_files[@]}"
 do
-    echo -e "    ${gallery_url[i]}"
+    echo -e "    ${nav_url[navindex]} - ${gallery_url[i]}"
     
     navindex="${gallery_nav[i]}"
     url="${nav_url[navindex]}/${gallery_url[i]}"
@@ -597,28 +563,38 @@ do
     mkdir -p "$out_dir/$url"
     
     image="${gallery_files[i]}"
-    
-    # generate static images for each resolution
-    width=$(identify -format "%w" "$image")
-        
+            
     count=0
+
+	mkdir -p /$tmpdir/$url/
+
+	# Copy the image to temp directory (in memory)
+	vips copy "$image" "/$tmpdir/$url/source_image.v"
     
+	# Loop through the resolutions and create resized images
     for res in "${resolution[@]}"
     do
       ((count++))
       [ -e "$out_dir/$url/$res.jpg" ] && continue
       (
-        ffmpeg -i "$image" -vf scale=$res:-1 -qscale:v $jpeg_quality "$out_dir/$url/$res.jpg" -hide_banner -loglevel error
+		# Calculate the scale factor
+		scale_factor=$(echo "$res / $(vipsheader -f width "$image")" | bc -l)
+		
+		# Resize the image using the width
+		vips resize "/$tmpdir/$url/source_image.v" "/$tmpdir/$url/resized_image_$res.v" $scale_factor
+		vips jpegsave "/$tmpdir/$url/resized_image_$res.v" "$out_dir/$url/$res.jpg" --Q $jpeg_quality --optimize-coding --strip
       ) &
     done
     wait
         
-    rm -rf "${scratchdir:?}/$url/"*
+    rm -rf "$tmpdir/$url"
 done
 
 
-printf "\nCopying resources\n"
+printf "Copying resources"
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
+
+printf "\n    done\n"
 
 cleanup
