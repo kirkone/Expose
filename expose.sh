@@ -55,6 +55,19 @@ resolution=${resolution:-(2560 1920 1280 1024 640)}
 # jpeg compression quality for static photos
 jpeg_quality=${jpeg_quality:-85}
 
+# Apply default sort directions if not set in config.sh
+folder_sort_direction=${folder_sort_direction:-"asc"}
+image_sort_direction=${image_sort_direction:-"asc"}
+
+folder_sort_option="-r"
+image_sort_option="-r"
+if [ "$folder_sort_direction" = "asc" ]; then
+  folder_sort_option=""
+fi
+if [ "$image_sort_direction" = "asc" ]; then
+  image_sort_option=""
+fi
+
 # script starts here
 
 command -v exiftool >/dev/null 2>&1 || { echo "EXIFTool is a required dependency, aborting..." >&2; exit 1; }
@@ -156,7 +169,7 @@ do
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-done < <(find "$in_dir" -type d ! -path "$in_dir" ! -path "$in_dir*/_*" | sort -r)
+done < <(find "$in_dir" -type d ! -path "$in_dir" ! -path "$in_dir*/_*" | sort $folder_sort_option)
 
 # re-create directory structure
 mkdir -p "$out_dir"
@@ -290,7 +303,7 @@ do
 		gallery_maxwidth+=("$maxwidth")
 		gallery_maxheight+=("$maxheight")
 
-	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort -r)
+	done < <(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" | sort $image_sort_option)
 	
 	nav_count[i]="$index"
 	
