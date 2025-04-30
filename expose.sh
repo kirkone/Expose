@@ -38,6 +38,7 @@ fi
 
 site_title=${site_title:-"My Awesome Photos"}
 site_copyright=${site_copyright:-"© $(date +%Y)"}
+nav_title=${nav_title:-"Pages"}
 
 theme=${theme:-"default"}
 theme_dir=${theme_dir:-"$topdir/themes/$theme"}
@@ -443,6 +444,7 @@ do
 	#write html file
 	html=$(template "$html" sitetitle "$site_title")
 	html=$(template "$html" sitecopyright "$site_copyright")
+	html=$(template "$html" navtitle "$nav_title")
 	html=$(template "$html" gallerytitle "${nav_name[i]}")
 		
 	resolutionstring=$(printf "%s " "${resolution[@]}")
