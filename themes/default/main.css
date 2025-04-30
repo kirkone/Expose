@@ -46,6 +46,7 @@ p, li, figcaption {
   --content-max-width: 900px;
   --breakout-max-width: 1240px;
   --breakout-size: calc( (var(--breakout-max-width) - var(--content-max-width)) / 2 );
+  --grid-gap: var(--space-xs);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -152,7 +153,7 @@ body > menu {
   align-content: flex-start;
   justify-content: center;
   gap: var(--space-l);
-  transition-property: display opacity;
+  transition-property: display, opacity;
   transition-duration: var(--animation-time);
   transition-timing-function: ease-in-out;
   transform-style: ease-in-out;
@@ -195,6 +196,7 @@ menu:focus-within,
 .nav-trigger:checked ~ menu {
   display: flex;
   opacity: 1;
+  align-content: center;
 }
 @starting-style {
   menu:focus-within,
@@ -212,11 +214,12 @@ header {
   background-color: hsl(var(--color-background-hsl));
   position: sticky;
   top: 0;
-  margin-top: var(--space-l);
+  margin-top: var(--space-xl);
   padding-bottom: var(--space-xs);
+  height: calc(var(--space-xl) + var(--space-xs));
 }
 header div {
-  grid-column: breakout;
+  grid-column: content;
   display: flex;
   gap: var(--space-s);
   justify-content: space-between;
@@ -228,6 +231,65 @@ header div h2 {
   letter-spacing: 0.1em;
   font-weight: 100;
 }
+header div > form {
+  position: relative;
+  flex-grow: 1;
+  transition-property: width, opacity;
+  transition-duration: var(--animation-time);
+  transition-timing-function: ease-in-out;
+}
+header div > form input[type=search] {
+  all: unset;
+  background-color: none;
+  font-size: var(--font-size-3);
+  font-weight: 100;
+  border: none;
+  width: 100%;
+  transition-property: border-bottom, background-color;
+  transition-duration: var(--animation-time);
+  transition-timing-function: ease-in-out;
+  outline: none;
+  border-bottom: solid 1px hsl(var(--color-hsl)/0);
+  /* clears the ‘X’ from Chrome */
+}
+header div > form input[type=search]:focus, header div > form input[type=search]:not(:placeholder-shown) {
+  color: hsl(var(--color-light-hsl));
+  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
+}
+header div > form input[type=search]:not(:placeholder-shown):not(:focus) {
+  color: hsl(var(--color-light-hsl)/0.5);
+  border-bottom: solid 1px hsl(var(--color-hsl)/0.1);
+}
+header div > form input[type=search]::-webkit-search-decoration, header div > form input[type=search]::-webkit-search-cancel-button, header div > form input[type=search]::-webkit-search-results-button, header div > form input[type=search]::-webkit-search-results-decoration {
+  appearance: none;
+}
+header div > form > label,
+header div > form > button {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  width: var(--font-size-1);
+  right: 0;
+  top: 50%;
+  translate: 0 -35%;
+  color: hsl(var(--color-light-hsl));
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition-behavior: discrete;
+  transition-property: opacity, visibility, color;
+  transition-duration: var(--animation-time);
+  transition-timing-function: ease-in-out;
+}
+header div > form > label:hover,
+header div > form > button:hover {
+  color: hsl(var(--color-dark-hsl));
+}
+header div > form:has(input[type=search]:placeholder-shown) > label, header div > form:has(input[type=search]:not(:placeholder-shown)) > button {
+  opacity: 1;
+  pointer-events: all;
+  visibility: visible;
+}
 header div nav {
   display: flex;
   justify-content: flex-end;
@@ -235,6 +297,10 @@ header div nav {
   flex-wrap: wrap;
   gap: var(--space-s);
   font-size: var(--font-size-3);
+  opacity: 1;
+  transition-property: opacity;
+  transition-duration: var(--animation-time);
+  transition-timing-function: ease-in-out;
 }
 header div a {
   color: hsl(var(--color-light-hsl));
@@ -248,20 +314,32 @@ header div a:hover {
   color: hsl(var(--color-dark-hsl));
   border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
 }
+@media (width <= 600px) {
+  header div nav, header div form {
+    display: none;
+  }
+}
+
+menu:focus-within ~ header nav, menu:focus-within ~ header form,
+.nav-trigger:checked ~ header nav,
+.nav-trigger:checked ~ header form {
+  opacity: 0;
+}
 
 main {
   grid-column: content;
   margin-top: var(--space-2xl);
 }
-main > h1 {
+main > section > h1 {
   margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
   padding: 0 var(--space-s);
   font-size: var(--font-size-4);
   letter-spacing: 0.1em;
   font-weight: 100;
   border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
+  flex: 1 1 100%;
 }
-main > h2 {
+main > section > h2 {
   margin: 0 calc(var(--space-s) * -1) var(--space-m) calc(var(--space-s) * -1);
   padding: 0 var(--space-s);
   font-size: var(--font-size-3);
@@ -270,33 +348,32 @@ main > h2 {
   border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
   background-color: hsl(var(--color-background-hsl));
   position: relative;
-  z-index: 190;
-  outline: solid var(--space-m) hsl(var(--color-background-hsl));
+  outline: solid calc(var(--space-m)) hsl(var(--color-background-hsl));
+  box-shadow: 0px calc(var(--space-m) + var(--grid-gap)) 0 0 hsl(var(--color-background-hsl));
+  flex: 1 1 100%;
 }
-main > p {
+main > section > p {
   margin-bottom: var(--space-m);
   font-size: var(--font-size-2);
   letter-spacing: 0.02em;
-  text-align: justify;
+  flex: 1 1 100%;
 }
 main .gallery {
   display: flex;
   flex-wrap: wrap;
-  grid-gap: var(--space-3xs);
+  grid-gap: var(--grid-gap);
   position: relative;
-  border-bottom: solid var(--space-m) hsl(var(--color-background-hsl));
-}
-@media (width <= 600px) {
-  main .gallery {
-    margin: 0 calc(var(--space-s) * -1) 0 calc(var(--space-s) * -1);
-  }
+  margin-bottom: var(--space-l);
 }
 main .gallery > article {
-  flex-grow: calc(var(--width) * (100000 / var(--height)));
+  flex-grow: calc(var(--width) * (500000000 / var(--height)));
   flex-basis: calc(var(--space-s) * 15 * (var(--width) / var(--height)));
   position: relative;
   background-color: hsl(var(--color-background-hsl));
+  outline: solid var(--grid-gap) hsl(var(--color-background-hsl));
   cursor: zoom-in;
+  display: flex;
+  justify-content: center;
 }
 main .gallery > article > picture {
   aspect-ratio: var(--width)/calc(var(--height)* 2);
@@ -304,7 +381,6 @@ main .gallery > article > picture {
   vertical-align: top;
   margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
   background-color: hsl(var(--color-background-hsl));
-  outline: solid var(--space-3xs) hsl(var(--color-background-hsl));
 }
 main .gallery > article img {
   max-width: 100%;
@@ -314,7 +390,7 @@ main .gallery > article img {
   margin: auto;
   display: block;
   position: sticky;
-  top: var(--space-2xl);
+  top: calc(var(--space-xl) + var(--space-xs));
 }
 main .gallery > article picture + aside {
   position: fixed;
@@ -329,13 +405,13 @@ main .gallery > article picture + aside {
   flex-wrap: wrap;
   align-content: flex-end;
   font-size: var(--font-size-0);
-  transition-property: display opacity;
+  transition-property: display, opacity;
   transition-duration: var(--animation-time);
   transform-style: ease-in-out;
   transition-behavior: allow-discrete;
   opacity: 0;
   z-index: 350;
-  pointer-events: none;
+  cursor: default;
 }
 main .gallery > article picture + aside p {
   padding-inline: var(--space-2xs);
@@ -348,7 +424,7 @@ main .gallery > article figure {
   bottom: 0;
   left: 0;
   z-index: 300;
-  transition-property: display opacity;
+  transition-property: display, opacity;
   transition-duration: var(--animation-time);
   transform-style: ease-in-out;
   transition-behavior: allow-discrete;
@@ -389,7 +465,7 @@ main .gallery > article figure > a::after {
   position: fixed;
   top: 0;
   right: var(--space-2xs);
-  z-index: 101;
+  z-index: 1000;
   color: hsl(var(--color-hsl));
   cursor: pointer;
   font-size: var(--font-size-5);
@@ -444,7 +520,12 @@ main .gallery:after {
   flex-grow: 1000000000;
   background: hsl(var(--color-background-hsl));
   position: relative;
-  outline: solid var(--space-3xs) hsl(var(--color-background-hsl));
+  outline: solid var(--grid-gap) hsl(var(--color-background-hsl));
+}
+@media (width <= 600px) {
+  main .gallery:after {
+    display: none;
+  }
 }
 
 footer {
@@ -452,14 +533,15 @@ footer {
   display: flex;
   z-index: 100;
   background: hsl(var(--color-background-hsl));
-  align-items: start;
+  flex-direction: column;
   justify-content: space-between;
+  align-items: center;
   height: calc(100dvh - var(--space-2xl) + 1px);
   outline: solid var(--space-m) hsl(var(--color-background-hsl));
   padding-top: var(--space-l);
 }
 footer div {
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-2);
   color: hsl(var(--color-light-hsl));
   text-wrap: nowrap;
 }
@@ -481,12 +563,12 @@ footer menu section {
 }
 footer menu section h4 {
   font-weight: 100;
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-2);
   margin-bottom: var(--space-xs);
 }
 footer menu section a {
   font-weight: 100;
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-2);
   text-decoration: none;
   color: hsl(var(--color-light-hsl));
   transition-property: color, border-bottom;
