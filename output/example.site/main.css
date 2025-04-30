@@ -219,7 +219,7 @@ header {
   height: calc(var(--space-xl) + var(--space-xs));
 }
 header div {
-  grid-column: content;
+  grid-column: breakout;
   display: flex;
   gap: var(--space-s);
   justify-content: space-between;
