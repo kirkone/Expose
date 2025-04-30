@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+SECONDS=0
 
 topdir=$(pwd)
 scriptdir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
@@ -130,6 +131,7 @@ cleanup() {
     fi
 	
 	echo "    done"
+	echo "Elapsed time: $SECONDS seconds"  # Prints the time elapsed since SECONDS was initialized
 	exit
 }
 
@@ -578,8 +580,6 @@ do
     
     image="${gallery_files[i]}"
             
-    count=0
-
 	mkdir -p /$tmpdir/$url/
 
 	# Copy the image to temp directory (in memory)
@@ -588,7 +588,6 @@ do
 	# Loop through the resolutions and create resized images
     for res in "${resolution[@]}"
     do
-      ((count++))
       [ -e "$out_dir/$url/$res.jpg" ] && continue
       (
 		# Calculate the scale factor
