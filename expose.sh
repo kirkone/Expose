@@ -111,7 +111,12 @@ template () {
 	echo "$1" | sed "s/{{$key}}/$value/g; s/{{$key:[^}]*}}/$value/g"
 }
 
-tmpdir=$(mktemp -d -p /tmpfs -t expose.XXXXXXXX)
+# Check if /tmpfs exists, otherwise use the system default temp folder
+if [ -d "/tmpfs" ]; then
+    tmpdir=$(mktemp -d -p /tmpfs -t expose.XXXXXXXX)
+else
+    tmpdir=$(mktemp -d -t expose.XXXXXXXX)
+fi
 
 if [ -z "$tmpdir" ]
 then
@@ -130,7 +135,7 @@ cleanup() {
         rm -r "$tmpdir"
     fi
 	
-	echo "    done"
+	echo "    ✅"
 	echo "Elapsed time: $SECONDS seconds"  # Prints the time elapsed since SECONDS was initialized
 	exit
 }
