@@ -137,11 +137,11 @@ cleanup() {
 
 trap cleanup INT TERM
 
-printf "\nScanning directories\n    "
+printf "\nScanning directories\n   "
 
 while read node
 do
-	printf "."
+	echo -n " 📂"
 
 	node_depth=$(echo "$node" | awk -F"/" "{ print NF-$root_depth }")
 	
@@ -180,11 +180,11 @@ mkdir -p "$out_dir"
 dir_stack=()
 url_rel=""
 
-printf "\n    done\nPopulating nav\n    "
+printf "\n    ✅\nPopulating nav\n   "
 
 for i in "${!paths[@]}"
 do
-	printf "."
+	echo -n " 📄"
 	
 	path="${paths[i]}"
 	if [ "$i" -gt 1 ]
@@ -218,7 +218,7 @@ do
 	nav_url+=("$url")
 done
 
-printf "\n    done\nReading files"
+printf "\n    ✅\nReading files"
 
 # read in each file to populate $gallery variables
 for i in "${!paths[@]}"
@@ -312,7 +312,7 @@ do
 	
 done
 
-printf "\n    done"
+printf "\n    ✅"
 
 # build html file for each gallery
 template=$(cat "$theme_dir/template.html")
@@ -554,7 +554,7 @@ do
 	echo "$html" > "$out_dir/${nav_url[i]}"/index.html
 done
 
-printf "\n    done"
+printf "\n    ✅"
 
 printf "\nWrite top level index.html"
 
@@ -565,7 +565,7 @@ firsthtml=$(echo "$firsthtml" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
 firsthtml=$(echo "$firsthtml" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
 echo "$firsthtml" > "$out_dir"/index.html
 
-printf "\n    done"
+printf "\n    ✅"
 printf "\nStarting encode\n"
 
 # resize images
@@ -591,9 +591,9 @@ do
     do
 		(
 			output_file="$out_dir/$url/$res.jpg"
-			if [ -e "$output_file" ]; then
+			if [ -s "$output_file" ]; then
 				echo -n " »"
-				continue
+				exit 0  # Use exit to terminate the subshell
 			fi
 
 			# Calculate the scale factor
@@ -625,6 +625,6 @@ printf "Copying resources"
 # copy resources to output
 rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
 
-printf "\n    done\n"
+printf "\n    ✅\n"
 
 cleanup
