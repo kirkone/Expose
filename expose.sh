@@ -460,7 +460,7 @@ do
 	remaining="${#paths[@]}"
 	parent=-1
 	
-	while [ "$remaining" -gt 1 ]
+	while [ "$remaining" -gt 0 ]
 	do
 		for j in "${!paths[@]}"
 		do
@@ -569,11 +569,11 @@ printf "\nStarting encode\n"
 # resize images
 for i in "${!gallery_files[@]}"
 do
-    echo -e "    ${nav_url[navindex]} - ${gallery_url[i]}"
-    
     navindex="${gallery_nav[i]}"
     url="${nav_url[navindex]}/${gallery_url[i]}"
 
+    echo -e "    ${nav_url[navindex]} - ${gallery_url[i]}"
+    
     mkdir -p "$out_dir/$url"
     
     image="${gallery_files[i]}"
