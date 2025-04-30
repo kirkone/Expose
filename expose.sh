@@ -574,7 +574,7 @@ do
     navindex="${gallery_nav[i]}"
     url="${nav_url[navindex]}/${gallery_url[i]}"
 
-    echo -e "    ${nav_url[navindex]} - ${gallery_url[i]}"
+    echo -n "    ${nav_url[navindex]} - ${gallery_url[i]}"
     
     mkdir -p "$out_dir/$url"
     
@@ -584,21 +584,38 @@ do
 
 	# Copy the image to temp directory (in memory)
 	vips copy "$image" "/$tmpdir/$url/source_image.v"
+	source_width=$(vipsheader -f width "/$tmpdir/$url/source_image.v")
     
 	# Loop through the resolutions and create resized images
     for res in "${resolution[@]}"
     do
-      [ -e "$out_dir/$url/$res.jpg" ] && continue
-      (
-		# Calculate the scale factor
-		scale_factor=$(echo "$res / $(vipsheader -f width "$image")" | bc -l)
-		
-		# Resize the image using the width
-		vips resize "/$tmpdir/$url/source_image.v" "/$tmpdir/$url/resized_image_$res.v" $scale_factor
-		vips jpegsave "/$tmpdir/$url/resized_image_$res.v" "$out_dir/$url/$res.jpg" --Q $jpeg_quality --optimize-coding --strip
-      ) &
+		(
+			output_file="$out_dir/$url/$res.jpg"
+			if [ -e "$output_file" ]; then
+				echo -n " »"
+				continue
+			fi
+
+			# Calculate the scale factor
+			scale_factor=$(echo "$res / $source_width" | bc -l)
+			
+			# Resize the image using the width
+			vips resize "/$tmpdir/$url/source_image.v" "/$tmpdir/$url/resized_image_$res.v" $scale_factor
+			vips jpegsave "/$tmpdir/$url/resized_image_$res.v" "$out_dir/$url/$res.jpg" --Q $jpeg_quality --optimize-coding --strip
+
+			echo -n " ■"
+		) &
     done
-    wait
+	# Wait for all background processes to finish
+	wait
+
+	# Check if the process was successful
+	if [ $? -ne 0 ]; then
+		echo -e " ✘"
+		continue
+	fi
+
+	echo -e " ✔"
         
     rm -rf "$tmpdir/$url"
 done
