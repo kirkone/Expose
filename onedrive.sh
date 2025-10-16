@@ -32,13 +32,87 @@ get_api_url() {
     echo "$url"
 }
 
+# Function to get Badger token from OneDrive
+get_badger_token() {
+    local response
+    response=$(curl -s -H "Content-Type: application/json" -d '{"appId":"5cbed6ac-a083-4e14-b191-b4ba07653de2"}' \
+        https://api-badgerp.svc.ms/v1.0/token)
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to get Badger token from API." >&2
+        exit 1
+    fi
+    
+    if [ -z "$response" ]; then
+        echo "Error: Empty response when retrieving Badger token." >&2
+        exit 1
+    fi
+    
+    # Extract token from response
+    local token
+    token=$(echo "$response" | grep -oP '"token":"\K[^"]+' || echo "")
+    
+    if [ -n "$token" ]; then
+        echo "$token"
+    else
+        echo "Error: Failed to parse Badger token from response." >&2
+        exit 1
+    fi
+}
+
 # Function to fetch data from OneDrive
 fetch_data() {
-    local url
-    url=$(get_api_url "$SHARE_URL")
-
+    # Get Badger token for authentication
+    local token
+    token=$(get_badger_token)
+    
+    if [ -z "$token" ]; then
+        echo "Error: Could not retrieve Badger token." >&2
+        exit 1
+    fi
+    
+    # Encode the share URL
+    local ondrive_uri_encoded
+    ondrive_uri_encoded=$(echo -n "$SHARE_URL" | base64 -w 0 | tr -d '=' | tr '/' '_' | tr '+' '-')
+    local share_id="u!${ondrive_uri_encoded}"
+    
+    # Get root item first to check if it's a file or folder
+    local root_response
+    root_response=$(curl -s -H "Accept: application/json" -H "Prefer: autoredeem" \
+        -H "Authorization: Badger $token" -d '' \
+        "https://my.microsoftpersonalcontent.com/_api/v2.0/shares/${share_id}/driveitem?select=@content.downloadUrl,id,name")
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to fetch root item from OneDrive." >&2
+        exit 1
+    fi
+    
+    # Check if it's a file (has downloadUrl) or folder
+    local download_url
+    download_url=$(echo "$root_response" | grep -oP '"@content.downloadUrl":"\K[^"]+' || echo "")
+    
+    if [ -n "$download_url" ]; then
+        echo "Error: The share URL points to a single file, but this script expects a folder with images." >&2
+        exit 1
+    fi
+    
+    # Get folder ID for folder contents
+    local folder_id
+    folder_id=$(echo "$root_response" | grep -oP '"id":"\K[^"]+' || echo "")
+    
+    if [ -z "$folder_id" ]; then
+        echo "Error: Could not extract folder ID from response." >&2
+        exit 1
+    fi
+    
+    # Extract drive ID from folder ID
+    local drive_id="${folder_id%%!*}"
+    
+    # Get folder contents - simplified query without complex filters
+    local url="https://my.microsoftpersonalcontent.com/_api/v2.0/drives/$drive_id/items/$folder_id/children?\$select=name,@content.downloadUrl,file"
+    
     local response
-    response=$(curl -s "$url")
+    response=$(curl -s -H "Authorization: Badger $token" "$url")
     if [ $? -ne 0 ]; then
         echo "Error: Failed to fetch data from OneDrive." >&2
         exit 1
@@ -50,12 +124,13 @@ fetch_data() {
 # Function to process the JSON response
 process_images() {
     local response="$1"
-    echo "$response" | jq -r '.value[] | {
+    # Filter only images and create simplified format
+    echo "$response" | jq -r '.value[]? | select(.file.mimeType | startswith("image/")) | {
         src: ."@content.downloadUrl",
         name: (.name | sub("\\.[^/.]+$"; "")),
         file: .name,
-        description: .description,
-        date: .photo.takenDateTime
+        description: "",
+        date: "2024-01-01T00:00:00Z"
     } | @base64'
 }
 
