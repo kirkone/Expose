@@ -42,11 +42,11 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-.cache/**/*
-!.cache/example.site/
+#.cache/**/*
+!.cache/example.site/**/*
 
-projects/**/*
-!projects/example.site/
+#projects/**/*
+!projects/example.site/**/*
 
-output/**/*
-!output/example.site/
+#output/**/*
+!output/example.site/**/*

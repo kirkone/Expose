@@ -39,6 +39,13 @@ log_debug() {
     fi
 }
 
+# URL encode function for OneDrive paths (preserves forward slashes)
+url_encode_path() {
+    local string="$1"
+    # Replace spaces with %20 and other special characters but preserve forward slashes
+    echo "$string" | sed 's/ /%20/g' | sed 's/!/%21/g' | sed 's/"/%22/g' | sed 's/#/%23/g' | sed 's/\$/%24/g' | sed 's/&/%26/g' | sed "s/'/%27/g" | sed 's/(/%28/g' | sed 's/)/%29/g' | sed 's/\*/%2A/g' | sed 's/+/%2B/g' | sed 's/,/%2C/g'
+}
+
 # Function to check if required commands are installed
 check_dependencies() {
     local missing_deps=()
@@ -245,8 +252,12 @@ fetch_folder_contents() {
         full_path="${parent_path}/${folder_name}"
     fi
     
+    # URL encode the path to handle spaces and special characters
+    local encoded_path
+    encoded_path=$(url_encode_path "$full_path")
+    
     # Construct URL for subfolder contents using path-based addressing
-    local url="${ONEDRIVE_API_BASE}/drives/${share_drive_id}/items/${share_folder_id}:/${full_path}:/children?\$select=name,description,@content.downloadUrl,file,folder,id"
+    local url="${ONEDRIVE_API_BASE}/drives/${share_drive_id}/items/${share_folder_id}:/${encoded_path}:/children?\$select=name,description,@content.downloadUrl,file,folder,id"
     
     local response
     if ! response=$(make_api_request "$url" "$token"); then

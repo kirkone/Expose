@@ -78,17 +78,27 @@ SHARE_URL="https://1drv.ms/f/s/your-onedrive-share-link"
 
 ```
 projects/
-├── myproject/
+├── example/
 │   ├── config.sh           # OneDrive share URL configuration
 │   └── input/              # Downloaded images (auto-created)
-│       ├── image1.jpg      # Root folder images
-│       ├── 2023/           # OneDrive folder structure preserved
-│       │   ├── photo1.jpg
-│       │   └── January/    # Nested folders supported
-│       │       └── vacation.jpg
-│       └── 2024/
-│           └── summer/
-│               └── beach.jpg
+│       ├── 023051.jpg      # Root folder images
+│       ├── 023922.jpg
+│       ├── Branch 1/       # 🗂️ Structure folder from OneDrive
+│       │   └── Leaf 1/     # 📁 Nested gallery folder
+│       │       ├── 029191.jpg
+│       │       └── 029240.jpg
+│       ├── Gallery 1/      # 📁 Gallery folder
+│       │   ├── 001024.jpg
+│       │   └── 001432.jpg
+│       ├── Gallery 2/      # 📁 Gallery folder
+│       │   ├── 029051.jpg
+│       │   └── 029081.jpg
+│       └── Mixed/          # 📁🗂️ Mixed folder (images + subfolders)
+│           ├── 029153.jpg  # Own images
+│           ├── 029163.jpg
+│           └── Leaf 2/     # 📁 Subfolder gallery
+│               ├── 029135.jpg
+│               └── 029146.jpg
 ```
 
 ## 🎭 Sample Output
@@ -224,6 +234,7 @@ Test environment: 2 CPU cores, 26 images across 5 folders
 
 ## 🔄 Version History
 
+- **v2.0.1**: Fixed URL encoding for folder names with spaces and special characters
 - **v2.0**: Complete rewrite with recursion, performance optimization, modern UI
 - **v1.0**: Basic OneDrive download with year-based organization
 
