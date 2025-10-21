@@ -18,7 +18,6 @@ Here are some examples of websites that use this script:
 - Unix-based operating systems (Linux, macOS)
 - Bash
 - VIPS (libvips)
-- FFmpeg
 
 ## Basic usage
 
@@ -55,7 +54,7 @@ Exposé is a high-performance Bash script that helps photographers generate beau
 
 - Unix-based system (Linux, macOS)
 - Bash 4.0+
-- ImageMagick (for image processing)
+- VIPS (libvips, for high-performance image processing)
 - ExifTool (for EXIF data extraction)
 - Perl (optional, for Markdown parsing)
 

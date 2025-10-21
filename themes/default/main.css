@@ -9,11 +9,18 @@
   padding: 0;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   text-wrap: balance;
 }
 
-p, li, figcaption {
+p,
+li,
+figcaption {
   text-wrap: pretty;
   max-width: 80ch;
 }
@@ -45,7 +52,9 @@ p, li, figcaption {
   --space-3xl: clamp(4.5rem, 3.6724rem + 4.1379vw, 6rem);
   --content-max-width: 900px;
   --breakout-max-width: 1240px;
-  --breakout-size: calc( (var(--breakout-max-width) - var(--content-max-width)) / 2 );
+  --breakout-size: calc(
+    (var(--breakout-max-width) - var(--content-max-width)) / 2
+  );
   --grid-gap: var(--space-xs);
 }
 @media (prefers-color-scheme: dark) {
@@ -89,7 +98,7 @@ body:before {
   left: 1px;
   z-index: 251;
   background-color: hsl(var(--color-hsl)/0.3);
-  width: calc(100% - 2px );
+  width: calc(100% - 2px);
   scale: 0 1;
   transform-origin: top left;
   animation: scroll-watcher linear;
@@ -141,7 +150,7 @@ label[for=nav-trigger] span:first-child {
   transform: translateX(-110%) translateY(5%) rotate(135deg);
 }
 
-body > menu {
+body > nav {
   grid-column: full-width;
   position: fixed;
   height: 100dvh;
@@ -150,7 +159,7 @@ body > menu {
   display: none;
   flex-direction: row;
   flex-wrap: wrap;
-  align-content: flex-start;
+  align-content: center;
   justify-content: center;
   gap: var(--space-l);
   transition-property: display, opacity;
@@ -164,19 +173,34 @@ body > menu {
   backdrop-filter: saturate(180%) blur(2rem);
   padding-top: var(--space-3xl);
 }
-body > menu section {
+body > nav section {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: flex-start;
 }
-body > menu section h3 {
+body > nav section h3 {
   font-weight: 100;
   font-size: var(--font-size-3);
   margin-bottom: var(--space-s);
 }
-body > menu section a {
+body > nav section div {
+  display: flex;
+  flex-direction: column;
+}
+body > nav section div > span {
+  font-weight: 100;
+  font-size: var(--font-size-3);
+  text-decoration: none;
+  color: hsl(var(--color-light-hsl));
+  cursor: default;
+}
+body > nav section div a {
+  margin-left: var(--space-l);
+  font-size: var(--font-size-2);
+}
+body > nav section a {
   font-weight: 100;
   font-size: var(--font-size-3);
   text-decoration: none;
@@ -185,22 +209,22 @@ body > menu section a {
   transition-duration: var(--animation-time);
   transition-timing-function: ease-in-out;
 }
-body > menu section a:hover {
+body > nav section a:hover {
   color: hsl(var(--color-dark-hsl));
 }
-body > menu section a.active {
+body > nav section a.active {
   color: hsl(var(--color-dark-hsl));
+  pointer-events: none;
 }
 
-menu:focus-within,
-.nav-trigger:checked ~ menu {
+nav:focus-within,
+.nav-trigger:checked ~ nav {
   display: flex;
   opacity: 1;
-  align-content: center;
 }
 @starting-style {
-  menu:focus-within,
-.nav-trigger:checked ~ menu {
+  nav:focus-within,
+.nav-trigger:checked ~ nav {
     opacity: 0;
   }
 }
@@ -219,7 +243,7 @@ header {
   height: calc(var(--space-xl) + var(--space-xs));
 }
 header div {
-  grid-column: breakout;
+  grid-column: content;
   display: flex;
   gap: var(--space-s);
   justify-content: space-between;
@@ -315,12 +339,14 @@ header div a:hover {
   border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
 }
 @media (width <= 600px) {
-  header div nav, header div form {
+  header div nav,
+header div form {
     display: none;
   }
 }
 
-menu:focus-within ~ header nav, menu:focus-within ~ header form,
+nav:focus-within ~ header nav,
+nav:focus-within ~ header form,
 .nav-trigger:checked ~ header nav,
 .nav-trigger:checked ~ header form {
   opacity: 0;
@@ -376,7 +402,7 @@ main .gallery > article {
   justify-content: center;
 }
 main .gallery > article > picture {
-  aspect-ratio: var(--width)/calc(var(--height)* 2);
+  aspect-ratio: var(--width)/calc(var(--height) * 2);
   display: inline-block;
   vertical-align: top;
   margin-bottom: max(-100% / (var(--width) / var(--height)), max(-100dvh, var(--height) * -1px));
@@ -486,7 +512,7 @@ main .gallery > article figure img {
   width: auto;
   height: auto;
   max-width: 100dvw;
-  max-height: calc( 100dvh - (var(--space-m) * 2));
+  max-height: calc(100dvh - (var(--space-m) * 2));
   box-shadow: 0px 0px var(--space-l) 0px hsl(var(--color-background-hsl));
 }
 main .gallery > article:focus > picture + aside, main .gallery > article:target > picture + aside {
@@ -545,7 +571,7 @@ footer div {
   color: hsl(var(--color-light-hsl));
   text-wrap: nowrap;
 }
-footer menu {
+footer nav {
   grid-column: content;
   display: flex;
   flex-direction: row;
@@ -554,19 +580,34 @@ footer menu {
   justify-content: center;
   gap: var(--space-m);
 }
-footer menu section {
+footer nav section {
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: flex-start;
 }
-footer menu section h4 {
+footer nav section h4 {
   font-weight: 100;
   font-size: var(--font-size-2);
   margin-bottom: var(--space-xs);
 }
-footer menu section a {
+footer nav section div {
+  display: flex;
+  flex-direction: column;
+}
+footer nav section div > span {
+  font-weight: 100;
+  font-size: var(--font-size-2);
+  text-decoration: none;
+  color: hsl(var(--color-light-hsl));
+  cursor: default;
+}
+footer nav section div a {
+  margin-left: var(--space-l);
+  font-size: var(--font-size-1);
+}
+footer nav section a {
   font-weight: 100;
   font-size: var(--font-size-2);
   text-decoration: none;
@@ -575,9 +616,9 @@ footer menu section a {
   transition-duration: var(--animation-time);
   transition-timing-function: ease-in-out;
 }
-footer menu section a:hover {
+footer nav section a:hover {
   color: hsl(var(--color-dark-hsl));
 }
-footer menu section a.active {
+footer nav section a.active {
   color: hsl(var(--color-dark-hsl));
 }

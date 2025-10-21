@@ -141,35 +141,23 @@ template () {
 	echo "$1" | sed "s/{{$key}}/$value/g; s/{{$key:[^}]*}}/$value/g"
 }
 
-# Batch template processing - much faster than multiple sed calls
+# Batch template processing - much faster than multiple individual calls
 # Usage: template_batch "template_string" "key1:value1" "key2:value2" ...
 template_batch() {
-	local template_string="$1"
+	local result="$1"
 	shift
 	
-	# Build sed command with all substitutions
-	local sed_cmd=""
+	# Process each key-value pair by calling template() function
+	# This is slower than a single sed call, but handles multi-line values correctly
 	for assignment in "$@"; do
 		if [[ "$assignment" == *":"* ]]; then
 			local key="${assignment%%:*}"
 			local value="${assignment#*:}"
-			# Escape sed input
-			value=$(echo "$value" | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/&/\\\&/g')
-			key=$(echo "$key" | tr -d '[:space:]')
-			
-			if [ -n "$sed_cmd" ]; then
-				sed_cmd="$sed_cmd; "
-			fi
-			sed_cmd="${sed_cmd}s/{{$key}}/$value/g; s/{{$key:[^}]*}}/$value/g"
+			result=$(template "$result" "$key" "$value")
 		fi
 	done
 	
-	# Apply all substitutions in one sed call
-	if [ -n "$sed_cmd" ]; then
-		echo "$template_string" | sed "$sed_cmd"
-	else
-		echo "$template_string"
-	fi
+	echo "$result"
 }
 
 # Extract EXIF data for a specific file from individual JSON cache
@@ -347,8 +335,8 @@ do
 	name="${nav_name[i]}"
 	url="${nav_url[i]}"
 	
-	# Check if directory has images/videos - if not, skip processing but keep in nav structure
-	image_count=$(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" -o -iname "*.mp4" -o -iname "*.mov" -o -iname "*.avi" -o -iname "*.webm" \) | wc -l)
+	# Check if directory has images - if not, skip processing but keep in nav structure
+	image_count=$(find "$dir" -maxdepth 1 ! -path "$dir" ! -path "$dir*/_*" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.png" -o -iname "*.bmp" -o -iname "*.webp" \) | wc -l)
 	
 	if [ "$image_count" -eq 0 ]; then
 		nav_count[i]=0
@@ -440,9 +428,10 @@ done
 # build html file for each gallery
 template=$(cat "$theme_dir/template.html")
 post_template=$(cat "$theme_dir/post-template.html")
-nav_template=$(cat "$theme_dir/nav-template.html")
-nav_branch_template=$(cat "$theme_dir/nav-branch-template.html")
-nav_leaf_template=$(cat "$theme_dir/nav-leaf-template.html")
+# Minify navigation templates to single line for sed compatibility
+# This allows the template files to be nicely formatted while avoiding sed multi-line issues
+nav_branch_template=$(cat "$theme_dir/nav-branch-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
+nav_leaf_template=$(cat "$theme_dir/nav-leaf-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 
 # Extract EXIF placeholders from post template once (optimization)
 exif_placeholders_global=$(echo "$post_template" | grep -o '{{exif_[^}]*}}' | sed 's/{{exif_\([^:}]*\)[^}]*}}/\1/' | sort -u)
@@ -492,7 +481,7 @@ while [ "$remaining" -gt 0 ]; do
                     # Structure node (has children, no own gallery)
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
-                    nav_item=$(template "$nav_item" children "<ul>{{marker$j}}</ul>")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
                     nav_item=$(template "$nav_item" active "")
                     navigation+="$nav_item"
                 else
@@ -500,7 +489,7 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item="$nav_leaf_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
-                    nav_item=$(template "$nav_item" children "<ul>{{marker$j}}</ul>")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
                     nav_item=$(template "$nav_item" active "gallery")
                     navigation+="$nav_item"
                 fi
@@ -511,7 +500,7 @@ while [ "$remaining" -gt 0 ]; do
                     # Structure node
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
-                    nav_item=$(template "$nav_item" children "<ul>{{marker$j}}</ul>")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
                     nav_item=$(template "$nav_item" active "")
                     substring="$nav_item{{marker$parent}}"
                 else
@@ -519,7 +508,7 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item="$nav_leaf_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
-                    nav_item=$(template "$nav_item" children "<ul>{{marker$j}}</ul>")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
                     nav_item=$(template "$nav_item" active "gallery")
                     substring="$nav_item{{marker$parent}}"
                 fi
@@ -538,9 +527,8 @@ while [ "$remaining" -gt 0 ]; do
     ((depth++))
 done
 
-# Clean up remaining markers (empty nested lists)
-navigation=$(echo "$navigation" | sed 's/<ul>{{marker[^}]*}}<\/ul>//g')
-navigation="<ul>$navigation</ul>"
+# Clean up remaining markers (empty children placeholders)
+navigation=$(echo "$navigation" | sed 's/{{marker[^}]*}}//g')
 
 # Pre-extract all EXIF data in batch for massive performance boost
 printf "\nExtracting EXIF data in batch..."
@@ -886,8 +874,8 @@ do
 	# set default values for {{XXX:default}} strings
 	html=$(echo "$html" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
 	
-	# remove references to any unused {{xxx}} template variables and empty <ul>s from navigation
-	html=$(echo "$html" | sed "s/{{[^}]*}}//g; s/<ul><\/ul>//g")
+	# remove references to any unused {{xxx}} template variables
+	html=$(echo "$html" | sed "s/{{[^}]*}}//g")
 
 	printf "\n        Write index.html"
 	
@@ -991,7 +979,7 @@ fi # End of conditional encoding
 
 printf "Copying resources"
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
 
 printf "\n    ✅\n"
 
