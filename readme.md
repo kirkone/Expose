@@ -1,29 +1,10 @@
 # Exposé
 
-Exposé is a Bash script that helps photographers generate a stylish website to showcase their images. The result is a static website that focuses on displaying the images without any gimmicks like JavaScript.
+Exposé is a high-performance Bash script that helps photographers generate beautiful static websites to showcase their images. The result is a lightning-fast static website that focuses on displaying images without distracting elements or JavaScript dependencies.
 
 Here are some examples of websites that use this script:
 - https://kirkone.github.io/Expose/ (current example site)
 - https://photo.kirk.one/ (my personal website)
-
-## Features
-
-- **Easy to Use**: Just a Bash script, no additional dependencies.
-- **Static Website**: No need for a web server or dynamic content.
-- **Stylish Presentation**: Focus on the images without distracting elements.
-- **Automatic Generation**: Automatically generates HTML files based on the images in a folder.
-
-## Requirements
-
-- Unix-based operating systems (Linux, macOS)
-- Bash
-- VIPS (libvips)
-
-## Basic usage
-
-# Exposé
-
-Exposé is a high-performance Bash script that helps photographers generate beautiful static websites to showcase their images. The result is a lightning-fast static website that focuses on displaying images without distracting elements or JavaScript dependencies.
 
 ## 🚀 Performance Features
 
@@ -251,19 +232,21 @@ Exposé automatically detects folder types and generates appropriate navigation:
 
 **Generated Navigation:**
 ```html
-<ul>
-  <li><span class="label">2024</span>
-    <ul>
-      <li class="gallery"><a href="./2024/vacation">Vacation</a></li>
-      <li class="gallery"><a href="./2024/portraits">Portraits</a></li>
-      <li class="gallery active"><a href="./2024/events">Events</a>
-        <ul>
-          <li class="gallery"><a href="./2024/events/conference">Conference</a></li>
-        </ul>
-      </li>
-    </ul>
-  </li>
-</ul>
+<div>
+  <span>2024</span>
+  <div>
+    <a href="./2024/vacation" class="gallery">Vacation</a>
+  </div>
+  <div>
+    <a href="./2024/portraits" class="gallery">Portraits</a>
+  </div>
+  <div>
+    <a href="./2024/events" class="gallery active">Events</a>
+    <div>
+      <a href="./2024/events/conference" class="gallery">Conference</a>
+    </div>
+  </div>
+</div>
 ```
 
 ### Folder Structure
@@ -329,12 +312,16 @@ Exposé automatically detects folder types and generates appropriate navigation:
 
 **nav-branch-template.html** (non-clickable structure):
 ```html
-<li class="{{active}}"><span class="label">{{text}}</span>{{children}}</li>
+<div>
+  <span>{{text}}</span>
+  {{children}}
+</div>
 ```
 
 **nav-leaf-template.html** (clickable gallery):
 ```html
-<li class="{{active}}"><a href="{{uri}}">{{text}}</a>{{children}}</li>
+<a href="{{uri}}" class="{{active}}">{{text}}</a>
+{{children}}
 ```
 
 ### Default Values
@@ -393,7 +380,7 @@ cp new_photos/* projects/myproject/2024/
 ### Common Issues
 - **Slow builds**: Use `-s` flag first to test HTML generation
 - **Missing EXIF**: Ensure ExifTool is installed (`apt install libimage-exiftool-perl`)
-- **Image processing errors**: Check ImageMagick installation
+- **Image processing errors**: Check VIPS installation (`apt install libvips-tools`)
 - **Permission errors**: Ensure write access to output directory
 
 ### Cache Management
@@ -414,7 +401,19 @@ Live examples:
 - [Demo Site](https://kirkone.github.io/Expose/) - Example gallery
 - [Personal Portfolio](https://photo.kirk.one/) - Real-world usage
 
-## 📜 License
+## � Credits
+
+This project is heavily based on [Expose by Jack000](https://github.com/Jack000/Expose), an excellent static site generator for photographers. The core concept, templating system, and workflow remain largely inspired by the original work.
+
+Key enhancements in this fork:
+- **Performance optimizations**: Intelligent EXIF and HTML caching for 90% faster builds
+- **Batch processing**: Template optimization for large collections (1000+ images)
+- **OneDrive integration**: Automatic sync from shared folders
+- **Extended EXIF support**: Camera settings display with smart formatting
+- **Improved navigation**: Support for mixed folders and hierarchical structures
+- **Modern tooling**: VIPS instead of ImageMagick for better performance
+
+## �📜 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
 
@@ -431,7 +430,6 @@ level of your project, eg:
 ```bash
 site_title="Alternate Site Title"
 theme="theme2"
-backgroundcolor="#ffffff"
 ```
 
 ### Flags
@@ -440,7 +438,7 @@ backgroundcolor="#ffffff"
 expose.sh -p example.site
 ```
 
-The -p flag privides the name of the project folder that should be processed. Defaults to the first folder in the `./projects` folder.
+The -p flag provides the name of the project folder that should be processed. Defaults to the first folder in the `./projects` folder.
 
 ```
 expose.sh -d
@@ -489,7 +487,7 @@ If the two built-in themes aren't your thing, you can create a new theme. There 
 - `{{sitetitle}}` - a global title for your site, as specified in the config
 - `{{site_copyright}}` - a copyright for your site, as specified in the config
 - `{{gallerytitle}}` - the title of the current gallery. This is just taken from the folder name
-- `{{navigation}}` - a nested html menu generated from the folder structure. Does not include wrapping ul tag so you can use your own id
+- `{{navigation}}` - a nested html menu generated from the folder structure
 
 **post-template.html** contains the html fragment for each individual image. It has access to the following built-in variables:
 
@@ -497,8 +495,6 @@ If the two built-in themes aren't your thing, you can create a new theme. There 
 	- For images, this folder will contain all the scaled versions of the images, where the file name is simply the width of the image - eg. 640.jpg
 - `{{imagewidth}}` - maximum width that the source image can be downscaled to
 - `{{imageheight}}` - maximum height, based on aspect ratio and max width
-- `{{textcolor}}` - color of the text, either extracted from the source image or specified in config
-- `{{backgroundcolor}}` - background color, either extracted from the source image or specified in config
 
 in addition to these, any variables specified in the YAML metadata of the post will also be available to the post template, eg:
 
