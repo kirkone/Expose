@@ -504,7 +504,6 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
-                    nav_item=$(template "$nav_item" active "")
                     navigation+="$nav_item"
                 else
                     # Gallery node (has own page)
@@ -512,7 +511,6 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
-                    nav_item=$(template "$nav_item" active "")
                     navigation+="$nav_item"
                 fi
                 ((remaining--))
@@ -529,7 +527,6 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
-                    nav_item=$(template "$nav_item" active "")
                     substring="$nav_item{{marker$parent}}"
                 else
                     # Gallery node  
@@ -537,7 +534,6 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
                     nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
-                    nav_item=$(template "$nav_item" active "")
                     substring="$nav_item{{marker$parent}}"
                 fi
                 navigation=$(template "$navigation" "marker$parent" "$substring")
@@ -884,13 +880,6 @@ do
 	# Create gallery-specific navigation with active classes
 	gallery_navigation="$navigation"
 	
-	# Mark current gallery as active by adding "active" to the class attribute
-	current_url="${nav_url[i]}"
-	if [ -n "$current_url" ]; then
-		# Add "active" to the class of the current gallery link
-		gallery_navigation=$(echo "$gallery_navigation" | sed "s|<a href=\"{{basepath}}$current_url\" class=\" \">|<a href=\"{{basepath}}$current_url\" class=\"active\">|g")
-	fi
-	
 	gallery_vars=(
 		"sitetitle:$site_title"
 		"sitecopyright:$site_copyright"
@@ -903,6 +892,13 @@ do
 	)
 	
 	html=$(template_batch "$html" "${gallery_vars[@]}")
+	
+	# Now replace {{active}} for the current page (after basepath is resolved)
+	current_url="${nav_url[i]}"
+	if [ -n "$current_url" ]; then
+		# Find href with current URL and replace {{active}} with "active" in the same tag
+		html=$(echo "$html" | sed "s|\(href=\"[^\"]*$current_url\"[^>]*\){{active}}|\1active|g")
+	fi
 	
 	# set default values for {{XXX:default}} strings
 	html=$(echo "$html" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
