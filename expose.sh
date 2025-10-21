@@ -825,30 +825,28 @@ do
 			
 			# Add image parameters - use URL hash for consistent ID
 			template_vars+=("imagemd5:${gallery_url[gallery_index]}")
-			template_vars+=("imageurl:${gallery_url[gallery_index]}")
-			template_vars+=("imagewidth:${gallery_maxwidth[gallery_index]}")
-			template_vars+=("imageheight:${gallery_maxheight[gallery_index]}")
-			
-			# Add gallery-level variables that are needed in post templates
-			if [ "${nav_depth[i]}" = 0 ]; then
-				basepath="./"
-			else
-				basepath=$(yes "../" | head -n ${nav_depth[i]} | tr -d '\n')
-			fi
-			
-			if [ "${paths[i]}" = "$in_dir" ]; then
-				resourcepath="home/"
-			else
-				resourcepath=""
-			fi
-			
-			template_vars+=("basepath:$basepath")
-			template_vars+=("resourcepath:$resourcepath")
-			
-			# Apply all template variables in one batch operation
-			post=$(template_batch "$post" "${template_vars[@]}")
-			
-			# Write to cache only if HTML caching is enabled
+		template_vars+=("imageurl:${gallery_url[gallery_index]}")
+		template_vars+=("imagewidth:${gallery_maxwidth[gallery_index]}")
+		template_vars+=("imageheight:${gallery_maxheight[gallery_index]}")
+		
+		# Add gallery-level variables that are needed in post templates
+		if [ "${nav_depth[i]}" = 0 ]; then
+			basepath="./"
+		else
+			basepath=$(yes "../" 2>/dev/null | head -n ${nav_depth[i]} | tr -d '\n')
+		fi
+		
+		if [ "${paths[i]}" = "$in_dir" ]; then
+			resourcepath="home/"
+		else
+			resourcepath=""
+		fi
+		
+		template_vars+=("basepath:$basepath")
+		template_vars+=("resourcepath:$resourcepath")
+		
+		# Apply all template variables in one batch operation
+		post=$(template_batch "$post" "${template_vars[@]}")			# Write to cache only if HTML caching is enabled
 			if [ "$no_html_cache" != true ]; then
 				echo "$post" > "$html_cache_dir/${gallery_md5[gallery_index]}"
 			fi
@@ -873,7 +871,7 @@ do
 	if [ "${nav_depth[i]}" = 0 ]; then
 		basepath="./"
 	else
-		basepath=$(yes "../" | head -n ${nav_depth[i]} | tr -d '\n')
+		basepath=$(yes "../" 2>/dev/null | head -n ${nav_depth[i]} | tr -d '\n')
 	fi
 	
 	if [ "${paths[i]}" = "$in_dir" ]; then
