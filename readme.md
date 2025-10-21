@@ -83,41 +83,63 @@ projects/
 │   ├── config.sh              # Project configuration
 │   ├── metadata.txt           # Gallery-wide metadata (optional)
 │   └── input/                 # Source images folder
-│       ├── 023051.jpg         # Root gallery images
-│       ├── 023922.jpg         
-│       ├── Branch 1/          # 🗂️ Structure folder (no own images)
-│       │   └── Leaf 1/        # 📁 Gallery folder
-│       │       ├── 029191.jpg
-│       │       └── 029240.jpg
-│       ├── Gallery 1/         # 📁 Gallery folder  
-│       │   ├── 001024.jpg
-│       │   ├── 001432.jpg
-│       │   └── IMG_001.txt    # Image description (optional)
-│       ├── Gallery 2/         # 📁 Gallery folder
-│       │   ├── 029051.jpg
-│       │   └── 029081.jpg
-│       └── Mixed/             # 📁🗂️ Mixed folder (images + subfolders)
-│           ├── 029153.jpg     # Own images
-│           ├── 029163.jpg
-│           └── Leaf 2/        # 📁 Subfolder gallery
-│               ├── 029135.jpg
-│               └── 029146.jpg
+│       ├── image1.jpg         # Root gallery images (Homepage)
+│       ├── image2.jpg         
+│       ├── 01 Events/         # 📊 Column 1 (navigation section)
+│       │   ├── Fireworks/     # 📁 Gallery folder
+│       │   │   ├── photo1.jpg
+│       │   │   └── photo2.jpg
+│       │   └── Racing/        # 📁 Gallery folder
+│       │       ├── race1.jpg
+│       │       └── race2.jpg
+│       ├── 02 Miscellaneous/  # 📊 Column 2 (navigation section)
+│       │   ├── Branch 1/      # 🗂️ Structure folder (no own images)
+│       │   │   └── Leaf 1/    # 📁 Gallery folder
+│       │   │       ├── img1.jpg
+│       │   │       └── img2.jpg
+│       │   ├── Gallery 1/     # 📁 Gallery folder  
+│       │   │   ├── photo1.jpg
+│       │   │   └── IMG_001.txt # Image description (optional)
+│       │   ├── Gallery 2/     # 📁 Gallery folder
+│       │   │   └── photo2.jpg
+│       │   └── Mixed/         # 📁🗂️ Mixed folder (images + subfolders)
+│       │       ├── mixed1.jpg # Own images
+│       │       └── Leaf 2/    # 📁 Subfolder gallery
+│       │           └── sub1.jpg
+│       └── 03 Pages/          # 📊 Column 3 (navigation section)
+│           ├── About/         # 📁 Gallery folder
+│           │   └── portrait.jpg
+│           └── Gear/          # 📁 Gallery folder
+│               └── camera.jpg
 output/
 └── example/                   # Generated static website
-    ├── index.html             # Root gallery (023051.jpg, 023922.jpg)
-    ├── branch-1/
-    │   └── leaf-1/
-    │       └── index.html     # Leaf 1 gallery
-    ├── gallery-1/
-    │   └── index.html         # Gallery 1
-    ├── gallery-2/
-    │   └── index.html         # Gallery 2  
-    ├── mixed/
-    │   ├── index.html         # Mixed gallery (own images)
-    │   └── leaf-2/
-    │       └── index.html     # Leaf 2 gallery
+    ├── index.html             # Root gallery (Homepage)
+    ├── events/                # Column URLs included!
+    │   ├── fireworks/
+    │   │   └── index.html     # Fireworks gallery
+    │   └── racing/
+    │       └── index.html     # Racing gallery
+    ├── miscellaneous/         # Column URLs included!
+    │   ├── branch-1/
+    │   │   └── leaf-1/
+    │   │       └── index.html # Leaf 1 gallery
+    │   ├── gallery-1/
+    │   │   └── index.html     # Gallery 1
+    │   ├── gallery-2/
+    │   │   └── index.html     # Gallery 2  
+    │   └── mixed/
+    │       ├── index.html     # Mixed gallery
+    │       └── leaf-2/
+    │           └── index.html # Leaf 2 gallery
+    ├── pages/                 # Column URLs included!
+    │   ├── about/
+    │   │   └── index.html     # About page
+    │   └── gear/
+    │       └── index.html     # Gear page
     └── main.css               # Theme resources
 ```
+
+**Important:** Depth 1 folders (01 Events, 02 Miscellaneous, 03 Pages) become navigation columns and are part of the URL structure!
 
 ## ⚙️ Configuration
 
@@ -203,12 +225,18 @@ Example output: `F4.0 1/640 ISO800 162mm | Sony FE 70-200mm F4 G OSS on α 7 IV`
 ### Intelligent Folder Types
 Exposé automatically detects folder types and generates appropriate navigation:
 
-**📁 Gallery Folders** (contain images):
+**� Column Folders** (Depth 1 - contain only subfolders):
+- Displayed as navigation section headers
+- Part of the URL structure (`/events/fireworks/`)
+- Group related galleries together
+- Perfect for main categories
+
+**�📁 Gallery Folders** (contain images):
 - Displayed as clickable navigation links
 - Generate their own gallery pages
 - Support EXIF data and descriptions
 
-**🗂️ Structure Folders** (contain only subfolders):
+**🗂️ Structure Folders** (contain only subfolders, Depth 2+):
 - Displayed as non-clickable navigation labels
 - Organize galleries hierarchically
 - Perfect for grouping by year, event, etc.
@@ -221,44 +249,76 @@ Exposé automatically detects folder types and generates appropriate navigation:
 ### Navigation Examples
 
 ```
-📁 2024/               ← Structure folder (label only)
-├── 📁 Vacation/       ← Gallery folder (clickable)
-├── 📁 Portraits/      ← Gallery folder (clickable)
-└── 📁🗂️ Events/       ← Mixed folder (clickable + has subfolders)
-    ├── image1.jpg     ← Images in Events/
+� 01 Events/              ← Column (navigation section)
+├── 📁 Fireworks/          ← Gallery folder (clickable)
+├── 📁 Racing/             ← Gallery folder (clickable)
+└── 📁🗂️ Summer 2024/      ← Mixed folder (clickable + has subfolders)
+    ├── image1.jpg         ← Images in Summer 2024/
     ├── image2.jpg
-    └── 📁 Conference/ ← Subfolder of Events/
+    └── 📁 Conference/     ← Subfolder of Summer 2024/
+
+📂 02 Miscellaneous/       ← Column (navigation section)
+├── 📁 Gallery 1/          ← Gallery folder
+└── 📁 Gallery 2/          ← Gallery folder
+
+📂 03 Pages/               ← Column (navigation section)
+└── 🗂️ Info/              ← Structure folder (label only)
+    ├── 📁 About/          ← Gallery folder
+    └── 📁 Gear/           ← Gallery folder
 ```
 
 **Generated Navigation:**
 ```html
-<div>
-  <span>2024</span>
+<section>
+  <h3>Events</h3>
   <div>
-    <a href="./2024/vacation" class="gallery">Vacation</a>
+    <a href="./events/fireworks/" class=" ">Fireworks</a>
   </div>
   <div>
-    <a href="./2024/portraits" class="gallery">Portraits</a>
+    <a href="./events/racing/" class=" ">Racing</a>
   </div>
   <div>
-    <a href="./2024/events" class="gallery active">Events</a>
+    <a href="./events/summer-2024/" class="active">Summer 2024</a>
     <div>
-      <a href="./2024/events/conference" class="gallery">Conference</a>
+      <a href="./events/summer-2024/conference/" class=" ">Conference</a>
     </div>
   </div>
-</div>
+</section>
+<section>
+  <h3>Miscellaneous</h3>
+  <div>
+    <a href="./miscellaneous/gallery-1/" class=" ">Gallery 1</a>
+  </div>
+  <div>
+    <a href="./miscellaneous/gallery-2/" class=" ">Gallery 2</a>
+  </div>
+</section>
+<section>
+  <h3>Pages</h3>
+  <div>
+    <span>Info</span>
+    <div>
+      <a href="./pages/info/about/" class=" ">About</a>
+    </div>
+    <div>
+      <a href="./pages/info/gear/" class=" ">Gear</a>
+    </div>
+  </div>
+</section>
 ```
 
 ### Folder Structure
-- Nested folders supported (unlimited depth)
+- **Depth 1**: Navigation columns (section headers)
+- **Depth 2+**: Nested galleries and structure folders
+- Unlimited nesting depth supported
 - Folders starting with `_` are ignored
 - Automatic active state highlighting in navigation
 
 ### Sorting
 - **Images**: Reverse alphabetical by default
 - **Folders**: Configurable via `folder_sort_direction`
-- **Custom order**: Add numerical prefixes (e.g., `01_vacation`, `02_portraits`)
-- Prefixes are stripped from URLs and navigation
+- **Custom order**: Add numerical prefixes (e.g., `01 Events`, `02 Miscellaneous`)
+- Prefixes are stripped from URLs and navigation (but not from section headers)
 
 ## 🏎️ Performance Optimization
 
@@ -297,18 +357,30 @@ Exposé automatically detects folder types and generates appropriate navigation:
 - **EXIF variables**: `{{exif_FNumber}}`, `{{exif_ExposureTime}}`, `{{exif_ISO}}`, etc.
 - **Custom metadata**: Any variables from image text files
 
-**nav-branch-template.html** (structure folders):
+**nav-column-template.html** (column headers - depth 1):
+- `{{text}}` - Column name
+- `{{children}}` - Nested navigation items (galleries within column)
+
+**nav-branch-template.html** (structure folders - depth 2+):
 - `{{text}}` - Folder name
-- `{{active}}` - CSS class for active state
+- `{{active}}` - CSS class for active state ("" or "active")
 - `{{children}}` - Nested navigation items
 
 **nav-leaf-template.html** (gallery folders):
 - `{{text}}` - Folder name  
 - `{{uri}}` - Link to gallery
-- `{{active}}` - CSS class for active state
+- `{{active}}` - CSS class for active state ("" or "active")
 - `{{children}}` - Nested navigation items (for mixed folders)
 
 ### Navigation Template Examples
+
+**nav-column-template.html** (navigation columns):
+```html
+<section>
+  <h3>{{text}}</h3>
+  {{children}}
+</section>
+```
 
 **nav-branch-template.html** (non-clickable structure):
 ```html
@@ -320,7 +392,7 @@ Exposé automatically detects folder types and generates appropriate navigation:
 
 **nav-leaf-template.html** (clickable gallery):
 ```html
-<a href="{{uri}}" class="{{active}}">{{text}}</a>
+<a href="{{uri}}" class=" {{active}}">{{text}}</a>
 {{children}}
 ```
 
@@ -338,7 +410,8 @@ Use fallback syntax for optional variables:
 2. Modify templates as needed:
    - `template.html` - Main page layout
    - `post-template.html` - Individual images
-   - `nav-branch-template.html` - Structure folders
+   - `nav-column-template.html` - Column headers (depth 1)
+   - `nav-branch-template.html` - Structure folders (depth 2+)
    - `nav-leaf-template.html` - Gallery folders
 3. Update `config.sh`: `theme="mytheme"`
 

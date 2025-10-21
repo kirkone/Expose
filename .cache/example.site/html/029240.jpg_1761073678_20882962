@@ -1,0 +1,34 @@
+<article tabindex="0" id="bf89ee2b2651" style="--width:3840; --height:5760;">
+	<picture>
+		<img alt="" loading="lazy" decoding="async" src="./bf89ee2b2651/640.jpg" width="3840" height="5760">
+	</picture>
+	<aside>
+		<p>
+			F8.0 1/125 ISO200 400.0 mm
+		</p>
+		<p>
+			FE 70-200mm F4 Macro G OSS II + 2X Teleconverter on α 7 IV
+		</p>
+	</aside>
+	<figure>
+		<a tabindex="-1" title="close">close</a>
+		<picture>
+			<img
+				loading="lazy"
+				decoding="async"
+				src="./bf89ee2b2651/1920.jpg"
+				srcset="
+				./bf89ee2b2651/640.jpg 640w,
+				./bf89ee2b2651/1024.jpg 1024w,
+				./bf89ee2b2651/1280.jpg 1280w,
+				./bf89ee2b2651/1920.jpg 1920w,
+				./bf89ee2b2651/2560.jpg 2560w,
+				./bf89ee2b2651/3840.jpg 3840w
+				"
+				width="3840"
+				height="5760"
+				alt=""
+				>
+		</picture>
+	</figure>
+</article>

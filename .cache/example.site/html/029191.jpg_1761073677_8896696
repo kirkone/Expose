@@ -1,0 +1,34 @@
+<article tabindex="0" id="687a6523a06a" style="--width:2560; --height:3840;">
+	<picture>
+		<img alt="" loading="lazy" decoding="async" src="./687a6523a06a/640.jpg" width="2560" height="3840">
+	</picture>
+	<aside>
+		<p>
+			F8.0 30 ISO100 200.0 mm
+		</p>
+		<p>
+			FE 70-200mm F4 Macro G OSS II on α 7 IV
+		</p>
+	</aside>
+	<figure>
+		<a tabindex="-1" title="close">close</a>
+		<picture>
+			<img
+				loading="lazy"
+				decoding="async"
+				src="./687a6523a06a/1920.jpg"
+				srcset="
+				./687a6523a06a/640.jpg 640w,
+				./687a6523a06a/1024.jpg 1024w,
+				./687a6523a06a/1280.jpg 1280w,
+				./687a6523a06a/1920.jpg 1920w,
+				./687a6523a06a/2560.jpg 2560w,
+				./687a6523a06a/3840.jpg 3840w
+				"
+				width="2560"
+				height="3840"
+				alt=""
+				>
+		</picture>
+	</figure>
+</article>

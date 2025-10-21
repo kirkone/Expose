@@ -246,14 +246,21 @@ do
 	dircount=$(find "$node" -maxdepth 1 -type d ! -path "$node" ! -path "$node*/_*" | wc -l)
 	imagecount=$(find "$node" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.bmp" -o -iname "*.webp" \) | wc -l)
 	
-	if [ "$dircount" -gt 0 ] && [ "$imagecount" -gt 0 ]
+	# Determine node type:
+	# Type 2 = Column (depth 1, only subdirs, no images)
+	# Type 1 = Leaf/Mixed gallery (has images, optionally subdirs)
+	# Type 0 = Structure (depth 2+, only subdirs, no images)
+	if [ "$node_depth" -eq 1 ] && [ "$dircount" -gt 0 ] && [ "$imagecount" -eq 0 ]
+	then
+		node_type=2 # column header (depth 1, only subdirs)
+	elif [ "$dircount" -gt 0 ] && [ "$imagecount" -gt 0 ]
 	then
 		node_type=1 # mixed: contains both dirs and images, treat as leaf gallery
 	elif [ "$dircount" -gt 0 ]
 	then
-		node_type=0 # dir contains other dirs, it is not a leaf
+		node_type=0 # structure: dir contains other dirs, it is not a leaf
 	else
-		node_type=1 # does not contain other dirs, it is a leaf
+		node_type=1 # leaf: does not contain other dirs, it is a leaf
 	fi
 	
 	paths+=("$node")
@@ -308,7 +315,10 @@ do
 		url+="$u/"
 	done
 	
-	url+="$url_rel"
+	# Columns (type 2) don't get their own URL - they only exist in navigation
+	if [ "${nav_type[i]}" -ne 2 ]; then
+		url+="$url_rel"
+	fi
 	
 	# Special handling for root directory
 	if [ "${paths[$i]}" = "$in_dir" ]
@@ -317,6 +327,11 @@ do
 		nav_image_url+=("$url_rel")  # but images go to subfolder
 		mkdir -p "$out_dir"
 		mkdir -p "$out_dir/$url_rel"
+	elif [ "${nav_type[i]}" -eq 2 ]
+	then
+		# Columns don't get output directories or URLs
+		nav_url+=("")
+		nav_image_url+=("")
 	else
 		nav_url+=("$url")
 		nav_image_url+=("$url")
@@ -432,6 +447,7 @@ post_template=$(cat "$theme_dir/post-template.html")
 # This allows the template files to be nicely formatted while avoiding sed multi-line issues
 nav_branch_template=$(cat "$theme_dir/nav-branch-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 nav_leaf_template=$(cat "$theme_dir/nav-leaf-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
+nav_column_template=$(cat "$theme_dir/nav-column-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 
 # Extract EXIF placeholders from post template once (optimization)
 exif_placeholders_global=$(echo "$post_template" | grep -o '{{exif_[^}]*}}' | sed 's/{{exif_\([^:}]*\)[^}]*}}/\1/' | sort -u)
@@ -476,8 +492,14 @@ while [ "$remaining" -gt 0 ]; do
             items_processed_this_depth=1
             
             if [ "$parent" -lt 0 ] && [ "${nav_depth[j]}" = 1 ]; then
-                # Top level items
-                if [ "${nav_type[j]}" = 0 ]; then
+                # Top level items (depth 1)
+                if [ "${nav_type[j]}" = 2 ]; then
+                    # Column header (type 2)
+                    nav_item="$nav_column_template"
+                    nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    navigation+="$nav_item"
+                elif [ "${nav_type[j]}" = 0 ]; then
                     # Structure node (has children, no own gallery)
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
@@ -496,7 +518,13 @@ while [ "$remaining" -gt 0 ]; do
                 ((remaining--))
             elif [ "${nav_depth[j]}" = "$depth" ]; then
                 # Nested items - replace parent marker
-                if [ "${nav_type[j]}" = 0 ]; then
+                if [ "${nav_type[j]}" = 2 ]; then
+                    # Column (shouldn't happen at nested level, but handle it)
+                    nav_item="$nav_column_template"
+                    nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                    nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    substring="$nav_item{{marker$parent}}"
+                elif [ "${nav_type[j]}" = 0 ]; then
                     # Structure node
                     nav_item="$nav_branch_template"
                     nav_item=$(template "$nav_item" text "${nav_name[j]}")
@@ -621,10 +649,14 @@ printf " ✅"
 
 printf "\nBuilding HTML"
 
-# Count galleries to build (skip pure structure directories)
+# Count galleries to build (skip structure directories and columns)
 total_galleries=0
 for i in "${!paths[@]}"
 do
+	# Skip columns (type 2) and structures without images
+	if [ "${nav_type[i]}" = 2 ]; then
+		continue
+	fi
 	if [ "${nav_type[i]}" -ge 1 ] || [ "${nav_count[i]}" -gt 0 ]
 	then
 		((total_galleries++))
@@ -634,7 +666,10 @@ done
 current_gallery=0
 for i in "${!paths[@]}"
 do
-	# Skip pure structure directories without images
+	# Skip columns (type 2) and structure directories without images
+	if [ "${nav_type[i]}" = 2 ]; then
+		continue
+	fi
 	if [ "${nav_type[i]}" -lt 1 ] && [ "${nav_count[i]}" -le 0 ]
 	then
 		continue
@@ -979,7 +1014,7 @@ fi # End of conditional encoding
 
 printf "Copying resources"
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="nav-column-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
 
 printf "\n    ✅\n"
 

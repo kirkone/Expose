@@ -1,0 +1,34 @@
+<article tabindex="0" id="44baf5076be5" style="--width:3840; --height:5760;">
+	<picture>
+		<img alt="" loading="lazy" decoding="async" src="./44baf5076be5/640.jpg" width="3840" height="5760">
+	</picture>
+	<aside>
+		<p>
+			F2.8 1/13 ISO12800 24.0 mm
+		</p>
+		<p>
+			FE 12-24mm F2.8 GM on α 7 IV
+		</p>
+	</aside>
+	<figure>
+		<a tabindex="-1" title="close">close</a>
+		<picture>
+			<img
+				loading="lazy"
+				decoding="async"
+				src="./44baf5076be5/1920.jpg"
+				srcset="
+				./44baf5076be5/640.jpg 640w,
+				./44baf5076be5/1024.jpg 1024w,
+				./44baf5076be5/1280.jpg 1280w,
+				./44baf5076be5/1920.jpg 1920w,
+				./44baf5076be5/2560.jpg 2560w,
+				./44baf5076be5/3840.jpg 3840w
+				"
+				width="3840"
+				height="5760"
+				alt=""
+				>
+		</picture>
+	</figure>
+</article>
