@@ -454,8 +454,6 @@ exif_placeholders_global=$(echo "$post_template" | grep -o '{{exif_[^}]*}}' | se
 
 gallery_index=0
 
-firstpath=""
-
 # Build main navigation ONCE (not for every gallery)
 printf "\nBuilding Navigation"
 
@@ -842,12 +840,14 @@ do
 		template_vars+=("resourcepath:$resourcepath")
 		
 		# Apply all template variables in one batch operation
-		post=$(template_batch "$post" "${template_vars[@]}")			# Write to cache only if HTML caching is enabled
-			if [ "$no_html_cache" != true ]; then
-				echo "$post" > "$html_cache_dir/${gallery_md5[gallery_index]}"
-			fi
+		post=$(template_batch "$post" "${template_vars[@]}")
+		
+		# Write to cache only if HTML caching is enabled
+		if [ "$no_html_cache" != true ]; then
+			echo "$post" > "$html_cache_dir/${gallery_md5[gallery_index]}"
+		fi
 
-		else
+	else
 			post=$(cat "$html_cache_dir/${gallery_md5[gallery_index]}")
 		fi
 
@@ -877,16 +877,13 @@ do
 	fi
 	
 	# Batch process all gallery template variables
-	# Create gallery-specific navigation with active classes
-	gallery_navigation="$navigation"
-	
 	gallery_vars=(
 		"sitetitle:$site_title"
 		"sitecopyright:$site_copyright"
 		"navtitle:$nav_title"
 		"gallerytitle:${nav_name[i]}"
 		"resolution:$resolutionstring"
-		"navigation:$gallery_navigation"
+		"navigation:$navigation"
 		"basepath:$basepath"
 		"resourcepath:$resourcepath"
 	)
