@@ -1,8 +1,10 @@
 # Cleanup Script
 
 This bash script is designed to clean up specific directories in your project folder. It takes a project name as a parameter and deletes the following directories if they exist:
-- `.cache/<projectname>`
-- `output/<projectname>`
+- `.cache/<projectname>` - Cached EXIF and HTML data
+- `output/<projectname>` - Generated static website
+
+Use this script when you want to force a complete rebuild or clean up disk space.
 
 ## Usage
 

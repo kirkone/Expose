@@ -59,7 +59,10 @@ check_dependencies() {
     
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
         log_error "Missing required dependencies: ${missing_deps[*]}"
-        log_error "Please install missing commands and try again."
+        echo "" >&2
+        echo "Please run the setup script to install all dependencies:" >&2
+        echo "  ./setup.sh" >&2
+        echo "" >&2
         exit 1
     fi
     
@@ -713,16 +716,20 @@ get_default_concurrency() {
     nproc_count=$(nproc 2>/dev/null || echo "2")
     
     # Downloads are I/O-bound, not CPU-bound
-    # Minimum concurrency of 2 ensures better performance even on single-core
     # Optimal concurrency is higher than CPU cores for network downloads
+    # Based on benchmark results across different systems
     if [[ "$nproc_count" -eq 1 ]]; then
         echo "4"    # Even single-core can handle multiple downloads
     elif [[ "$nproc_count" -eq 2 ]]; then
-        echo "6"    # Sweet spot for 2-core systems based on testing
+        echo "6"    # Sweet spot for 2-core systems
     elif [[ "$nproc_count" -le 4 ]]; then
         echo "8"    # Good for 4-core systems
+    elif [[ "$nproc_count" -le 8 ]]; then
+        echo "12"   # 6-8 core systems
+    elif [[ "$nproc_count" -le 16 ]]; then
+        echo "16"   # 12-16 core systems
     else
-        echo "10"   # High-end systems can handle more
+        echo "24"   # High-end systems (20+ cores) - tested optimal on 32-core
     fi
 }
 

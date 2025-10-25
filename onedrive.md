@@ -26,11 +26,23 @@ The script requires the following commands:
 # Required dependencies
 curl jq base64 tr mkdir
 
-# Install on Ubuntu/Debian
+# Install all dependencies with setup script
+./setup.sh
+
+# Or install manually on Ubuntu/Debian
 sudo apt-get install curl jq coreutils
 
-# Install on macOS
+# Or install manually on macOS
 brew install curl jq
+```
+
+The script will automatically check for missing dependencies when you run it. If any tools are missing, you'll see a helpful message:
+
+```
+❌ Missing required dependencies: curl jq
+
+Please run the setup script to install all dependencies:
+  ./setup.sh
 ```
 
 ## ⚙️ Configuration
