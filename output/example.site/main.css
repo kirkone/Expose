@@ -254,6 +254,11 @@ header div h2 {
   font-size: var(--font-size-4);
   letter-spacing: 0.1em;
   font-weight: 100;
+  display: flex;
+  gap: var(--space-s);
+}
+header div h2 > * {
+  display: block;
 }
 header div > form {
   position: relative;
@@ -366,6 +371,44 @@ main > section > h1 {
   flex: 1 1 100%;
 }
 main > section > h2 {
+  margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
+  padding: 0 var(--space-s);
+  font-size: var(--font-size-3);
+  letter-spacing: 0.1em;
+  font-weight: 100;
+  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
+  flex: 1 1 100%;
+}
+main > section > h3 {
+  margin: 0 calc(var(--space-s) * -1) var(--space-l) calc(var(--space-s) * -1);
+  padding: 0 var(--space-s);
+  font-size: var(--font-size-2);
+  letter-spacing: 0.1em;
+  font-weight: 100;
+  border-bottom: solid 1px hsl(var(--color-hsl)/0.3);
+  flex: 1 1 100%;
+}
+main > section > p {
+  margin-bottom: var(--space-m);
+  font-size: var(--font-size-2);
+  letter-spacing: 0.02em;
+  flex: 1 1 100%;
+}
+main > section > ul {
+  margin-bottom: var(--space-m);
+  font-size: var(--font-size-2);
+  letter-spacing: 0.02em;
+  flex: 1 1 100%;
+  padding-left: var(--space-l);
+}
+main .gallery {
+  display: flex;
+  flex-wrap: wrap;
+  grid-gap: var(--grid-gap);
+  position: relative;
+  margin-bottom: var(--space-l);
+}
+main .gallery > h2 {
   margin: 0 calc(var(--space-s) * -1) var(--space-m) calc(var(--space-s) * -1);
   padding: 0 var(--space-s);
   font-size: var(--font-size-3);
@@ -377,19 +420,6 @@ main > section > h2 {
   outline: solid calc(var(--space-m)) hsl(var(--color-background-hsl));
   box-shadow: 0px calc(var(--space-m) + var(--grid-gap)) 0 0 hsl(var(--color-background-hsl));
   flex: 1 1 100%;
-}
-main > section > p {
-  margin-bottom: var(--space-m);
-  font-size: var(--font-size-2);
-  letter-spacing: 0.02em;
-  flex: 1 1 100%;
-}
-main .gallery {
-  display: flex;
-  flex-wrap: wrap;
-  grid-gap: var(--grid-gap);
-  position: relative;
-  margin-bottom: var(--space-l);
 }
 main .gallery > article {
   flex-grow: calc(var(--width) * (500000000 / var(--height)));
