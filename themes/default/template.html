@@ -5,6 +5,9 @@
 	<meta charset="UTF-8">
 	<title>{{sitetitle}} - {{gallerytitle}}</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="{{sitedescription}}">
+	<meta name="author" content="{{siteauthor}}">
+	<meta name="keywords" content="{{sitekeywords}}">
 	<link type="text/css" rel="stylesheet" media="all" href="{{basepath}}main.css" />
 </head>
 
@@ -33,10 +36,17 @@
 	</header>
 
 	<main>
+		{{#gallerybody}}
+		<section class="gallery-intro">
+			{{gallerybody}}
+		</section>
+		{{/gallerybody}}
+		{{#images}}
 		<section class="gallery">
 			<h2>{{gallerytitle}}</h2>
 			{{content}}
 		</section>
+		{{/images}}
 	</main>
 
 	<footer>

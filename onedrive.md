@@ -1,21 +1,22 @@
-# OneDrive Sync Script v2.0
+# OneDrive Sync Script v2.1
 
-🚀 **High-performance OneDrive folder synchronization script** that downloads images from shared OneDrive folders while maintaining the original folder structure. Features intelligent concurrency optimization, recursive folder processing, and robust error handling.
+🚀 **High-performance OneDrive folder synchronization script** that downloads images and markdown files from shared OneDrive folders while maintaining the original folder structure. Features intelligent concurrency optimization, recursive folder processing, and robust error handling.
 
 ## ✨ Key Features
 
 - 🔄 **Recursive folder processing** - Handles arbitrarily nested folder structures
 - ⚡ **Performance optimized** - Auto-tuned concurrency for I/O-bound workloads (up to 58% faster)
 - 🗂️ **Structure preservation** - Maintains original OneDrive folder hierarchy locally
-- 🔐 **Zero-config authentication** - Uses Microsoft Badger token authentication
-- 📊 **Comprehensive reporting** - Shows folder structure with image and subfolder counts
+- � **Multi-format support** - Downloads images (.jpg, .jpeg, .png, .gif, .webp) and markdown files (.md)
+- �🔐 **Zero-config authentication** - Uses Microsoft Badger token authentication
+- 📊 **Comprehensive reporting** - Shows folder structure with image, markdown, and subfolder counts
 - 🛡️ **Production-ready** - Modern Bash standards with robust error handling
 - 🎯 **Smart progress tracking** - Real-time download progress with folder paths
 
 ## 🎯 Performance
 
-- **Sequential (c=1)**: ~35s for 26 images
-- **Optimized (c=6)**: ~20s for 26 images (**43% faster**)
+- **Sequential (c=1)**: ~35s for 26 files (23 images + 3 markdown)
+- **Optimized (c=6)**: ~20s for 26 files (**43% faster**)
 - **Auto-optimization**: Automatically increases c=1 to c=2 for better I/O performance
 
 ## 📋 Prerequisites
@@ -50,8 +51,8 @@ Please run the setup script to install all dependencies:
 Create a configuration file in your project folder:
 
 ```bash
-# projects/<project>/config.sh
-SHARE_URL="https://1drv.ms/f/s/your-onedrive-share-link"
+# projects/<project>/project.config
+SHARE_URL="https://1drv.ms/f/s!xxxxxx"
 ```
 
 ## 🚀 Usage
@@ -64,7 +65,7 @@ SHARE_URL="https://1drv.ms/f/s/your-onedrive-share-link"
 
 | Parameter | Required | Description | Default |
 |-----------|----------|-------------|---------|
-| `-p <project>` | ✅ | Project name (must have config.sh with SHARE_URL) | - |
+| `-p <project>` | ✅ | Project name (must have project.config with SHARE_URL) | - |
 | `-c <concurrency>` | ❌ | Number of concurrent downloads | Auto-optimized (6 for 2-core) |
 | `-f` | ❌ | Force download (overwrite existing files) | false |
 | `-d` | ❌ | Enable debug logging | false |
@@ -91,7 +92,7 @@ SHARE_URL="https://1drv.ms/f/s/your-onedrive-share-link"
 ```
 projects/
 ├── example/
-│   ├── config.sh           # OneDrive share URL configuration
+│   ├── project.config      # OneDrive share URL configuration
 │   └── input/              # Downloaded images (auto-created)
 │       ├── 023051.jpg      # Root folder images
 │       ├── 023922.jpg
@@ -176,7 +177,7 @@ The script automatically optimizes concurrency based on your system:
 ```bash
 # Create project structure
 mkdir -p projects/myproject
-echo 'SHARE_URL="https://1drv.ms/f/s/your-link"' > projects/myproject/config.sh
+echo 'SHARE_URL="https://1drv.ms/f/s/your-link"' > projects/myproject/project.config
 ```
 
 **❌ "Failed to obtain Badger authentication token"**

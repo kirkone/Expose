@@ -14,10 +14,13 @@ SECONDS=0
 topdir=$(pwd)
 scriptdir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
+# Load Mustache-Light template engine
+source "$scriptdir/lib/template.sh"
+
 skip_images=false
 
 # Check if we're in a project directory or need to detect it
-if [ -f "config.sh" ] && [ -d "input" ]; then
+if [ -f "project.config" ] && [ -d "input" ]; then
     # We're already in a project directory
     proj_dir="$topdir"
     project=$(basename "$topdir")
@@ -60,12 +63,43 @@ done
 
 # configuration
 
-# Source project configuration file if it exists in the project directory
-if [ -f "$proj_dir/config.sh" ]; then
-	. "$proj_dir/config.sh"
+# Source project configuration file
+if [ ! -f "$proj_dir/project.config" ]; then
+	echo "❌ Project configuration not found: $proj_dir/project.config" >&2
+	echo "" >&2
+	echo "Create a new project with:" >&2
+	echo "  ./new-project.sh -p $project" >&2
+	exit 1
 fi
 
+. "$proj_dir/project.config"
+
+# Load site config (overrides config defaults for content variables)
+site_config=""
+if [ -f "$proj_dir/site.config" ]; then
+	site_config=$(cat "$proj_dir/site.config")
+	
+	# Parse site config and set variables
+	while IFS=: read -r key value; do
+		# Skip empty lines and comments
+		[[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+		
+		# Trim whitespace
+		key=$(echo "$key" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+		value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+		
+		# Set variable dynamically
+		if [ -n "$key" ] && [ -n "$value" ]; then
+			eval "$key=\"$value\""
+		fi
+	done <<< "$site_config"
+fi
+
+# Set defaults for content variables (if not set by site.config)
 site_title=${site_title:-"My Awesome Photos"}
+site_description=${site_description:-"A photography portfolio"}
+site_author=${site_author:-""}
+site_keywords=${site_keywords:-"photography, photos, gallery"}
 site_copyright=${site_copyright:-"© $(date +%Y)"}
 nav_title=${nav_title:-"Pages"}
 
@@ -80,9 +114,9 @@ theme_dir=${theme_dir:-"$scriptdir/themes/$theme"}
 in_dir=${in_dir:-"$proj_dir/input"}
 out_dir=${out_dir:-"$topdir/output/$project"}
 
-# Source theme configuration file if it exists in the theme directory
-if [ -f "$theme_dir/config.sh" ]; then
-  	. "$theme_dir/config.sh"
+# Load theme configuration (defines required image resolutions)
+if [ -f "$theme_dir/theme.config" ]; then
+  	. "$theme_dir/theme.config"
 fi
 
 # widths to scale images to (heights are calculated from source images)
@@ -91,7 +125,7 @@ resolution=${resolution:-(2560 1920 1280 1024 640)}
 # jpeg compression quality for static photos
 jpeg_quality=${jpeg_quality:-85}
 
-# Apply default sort directions if not set in config.sh
+# Apply default sort directions if not set in project.config
 folder_sort_direction=${folder_sort_direction:-"asc"}
 image_sort_direction=${image_sort_direction:-"asc"}
 
@@ -474,8 +508,8 @@ do
 done
 
 # build html file for each gallery
-template=$(cat "$theme_dir/template.html")
-post_template=$(cat "$theme_dir/post-template.html")
+template=$(cat "$theme_dir/template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
+post_template=$(cat "$theme_dir/post-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 # Minify navigation templates to single line for sed compatibility
 # This allows the template files to be nicely formatted while avoiding sed multi-line issues
 nav_branch_template=$(cat "$theme_dir/nav-branch-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
@@ -724,6 +758,55 @@ do
 		gallery_metadata=$(cat "${paths[i]}/$metadata_file")
 	fi
 	
+	# Process gallery content.md if it exists
+	gallery_content_body=""
+	gallery_content_file="${paths[i]}/content.md"
+	if [ -f "$gallery_content_file" ] && [ -s "$gallery_content_file" ]
+	then
+		# Read content.md
+		gallery_content_text=$(cat "$gallery_content_file" | tr -d $'\r')
+		gallery_content_text=${gallery_content_text%$'\n'}
+		
+		# Check for YAML metadata block (between --- lines)
+		metaline=$(echo "$gallery_content_text" | grep -n -m 2 -- "^---$" | tail -1 | cut -d ':' -f1)
+		
+		if [ "$metaline" ]
+		then
+			# YAML block exists - extract metadata and content separately
+			sumlines=$(echo "$gallery_content_text" | wc -l)
+			taillines=$((sumlines-metaline))
+			
+			gallery_content_metadata=$(echo "$gallery_content_text" | head -n "$metaline")
+			gallery_content_body=$(echo "$gallery_content_text" | tail -n "$taillines")
+		else
+			# No YAML block - everything is content
+			gallery_content_metadata=""
+			gallery_content_body="$gallery_content_text"
+		fi
+		
+		# Parse Markdown to HTML (same way Jack does it for posts)
+		if command -v perl >/dev/null 2>&1
+		then
+			gallery_content_body=$(perl "$scriptdir/markdown/markdown.pl" --html4tags <(echo "$gallery_content_body"))
+		fi
+	fi
+	
+	# Set gallerybody variable for Mustache section
+	# Will be truthy only if content.md exists and has content
+	if [ -n "$gallery_content_body" ]; then
+		# Collapse multi-line HTML to single line (like expose.sh does for all templates)
+		template_set "gallerybody" "$(printf '%s' "$gallery_content_body" | tr -d '\n')"
+	else
+		template_set "gallerybody" ""
+	fi
+	
+	# Set images variable for Mustache section - only render gallery if images exist
+	if [ "${nav_count[i]}" -gt 0 ]; then
+		template_set "images" "yes"
+	else
+		template_set "images" ""
+	fi
+	
 	j=0
 	while [ "$j" -lt "${nav_count[i]}" ]
 	do	
@@ -889,10 +972,8 @@ do
 		((gallery_index++))
 		((j++))
 	done
-	
 
-	
-	#write html file - batch process all gallery-level template variables
+	# Write html file - batch process all gallery-level template variables
 	resolutionstring=$(printf "%s " "${resolution[@]}")
 	
 	# basepath and resourcepath are now handled in post templates, 
@@ -912,6 +993,9 @@ do
 	# Batch process all gallery template variables
 	gallery_vars=(
 		"sitetitle:$site_title"
+		"sitedescription:$site_description"
+		"siteauthor:$site_author"
+		"sitekeywords:$site_keywords"
 		"sitecopyright:$site_copyright"
 		"navtitle:$nav_title"
 		"gallerytitle:${nav_name[i]}"
@@ -921,20 +1005,32 @@ do
 		"resourcepath:$resourcepath"
 	)
 	
-	html=$(template_batch "$html" "${gallery_vars[@]}")
+	# Add gallery metadata as template variables
+	while read line
+	do
+		key=$(echo "$line" | cut -d ':' -f1 | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+		value=$(echo "$line" | cut -d ':' -f2- | tr -d $'\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+		colon=$(echo "$line" | grep ':')
+		
+		if [ "$key" ] && [ "$value" ] && [ "$colon" ]
+		then
+			gallery_vars+=("gallery_$key:$value")
+		fi
+	done < <(echo "$gallery_metadata")
 	
-	# Now replace {{active}} for the current page (after basepath is resolved)
+	
+	# Set all template variables and render with Mustache-Light engine
+	template_set_batch "${gallery_vars[@]}"
+	
+	# Render template with Mustache sections, variables, and defaults
+	html=$(template_render "$html")
+	
+	# Now replace {{active}} for the current page (after all other template processing)
 	current_url="${nav_url[i]}"
 	if [ -n "$current_url" ]; then
 		# Find href with current URL and replace {{active}} with "active" in the same tag
 		html=$(echo "$html" | sed "s|\(href=\"[^\"]*$current_url\"[^>]*\){{active}}|\1active|g")
 	fi
-	
-	# set default values for {{XXX:default}} strings
-	html=$(echo "$html" | sed "s/{{[^{}]*:\([^}]*\)}}/\1/g")
-	
-	# remove references to any unused {{xxx}} template variables
-	html=$(echo "$html" | sed "s/{{[^}]*}}//g")
 
 	printf "\n        Write index.html"
 	
@@ -1104,7 +1200,7 @@ fi # End of conditional encoding
 
 printf "Copying resources"
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="nav-column-template.html" --exclude="config.sh" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="nav-column-template.html" --exclude="theme.config" "$theme_dir/" "$out_dir/" >/dev/null
 
 printf "\n    ✅\n"
 

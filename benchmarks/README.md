@@ -125,7 +125,7 @@ When adding new benchmarks:
 ## Requirements
 
 - `time` command (usually pre-installed)
-- Project must be configured (e.g., `projects/example.site/config.sh`)
+- Project must be configured (e.g., `projects/example.site/project.config`)
 - Internet connection (for OneDrive benchmarks)
 
 ## Notes
@@ -133,4 +133,4 @@ When adding new benchmarks:
 - Benchmarks may take several minutes to complete
 - Results vary based on network speed, disk I/O, and system load
 - Run benchmarks when system is idle for best accuracy
-- OneDrive benchmark requires valid SHARE_URL in project config
+- OneDrive benchmark requires valid SHARE_URL in project.config

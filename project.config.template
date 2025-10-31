@@ -1,0 +1,71 @@
+# Expose Project Configuration Template
+# 
+# Copy this file to your project directory as 'project.config':
+#   cp project.config.template projects/yourproject/project.config
+#
+# Or use the interactive setup:
+#   ./new-project.sh -p yourproject
+#
+# Note: Content settings (site_title, site_copyright, nav_title) belong in
+#       projects/yourproject/site.config, not here!
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Structure Settings
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Root gallery display name (homepage folder name in output)
+root_gallery_name="Home"
+
+# Show root gallery in navigation (true/false)
+show_home_in_nav="false"
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Theme Settings
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Theme to use (folder name in themes/ directory)
+theme="default"
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Sorting Settings
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Sort direction for folders (asc or desc)
+folder_sort_direction="desc"
+
+# Sort direction for images (asc or desc)
+image_sort_direction="desc"
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Image Processing Settings
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# JPEG quality (1-100, higher = better quality but larger files)
+jpeg_quality=90
+
+# Note: Image resolutions are defined by the theme
+# See: themes/default/theme.config
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# OneDrive Integration (Optional)
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# OneDrive shared folder URL
+# Example: https://1drv.ms/f/c/90362b8badfb304c/IgAJ09BVc-BeQJ2A7C4iK3r2ASwhRVRLojLQbLOoZHTwGgk
+# Use: ./onedrive.sh -p <project> to sync images
+# SHARE_URL=""
+
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Deployment Configuration (Optional)
+#━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Remote server hostname or SSH config alias
+# Example: "example.com" or "myserver" (from ~/.ssh/config)
+# REMOTE_HOST=""
+
+# Remote username (optional if using SSH config)
+# REMOTE_USER=""
+
+# Remote path where the site will be deployed (absolute path)
+# Example: /var/www/html or /home/user/public_html
+# REMOTE_PATH=""

@@ -22,12 +22,14 @@ Here are some examples of websites that use this script:
 
 - **Zero Dependencies**: Pure Bash script with standard Unix tools
 - **Static Website**: No web server or database required
-- **OneDrive Integration**: Automatic image sync from shared OneDrive folders
+- **OneDrive Integration**: Automatic sync of images and markdown files from shared OneDrive folders
+- **Gallery Content**: Rich text introductions for galleries using Markdown (`content.md` files)
+- **Mustache-Light Templates**: Conditional sections for flexible template design
 - **EXIF Integration**: Automatic camera settings display (F-stop, ISO, focal length, etc.)
 - **Responsive Design**: Mobile-friendly image galleries
 - **Hierarchical Navigation**: Intelligent nested folder structure with mixed content support
 - **Smart Folder Types**: Automatic detection of gallery folders vs. structural folders
-- **Markdown Support**: Rich text descriptions for images
+- **Markdown Support**: Rich text descriptions for images and galleries
 - **Smart Caching**: File modification detection for incremental builds
 - **Custom Themes**: Fully customizable HTML templates
 
@@ -69,7 +71,11 @@ Please run the setup script to install all dependencies:
 
 ### Basic Usage
 ```bash
+# Generate the website
 ./expose.sh -p example.site
+
+# Deploy to your web server
+./deploy.sh -p example.site
 ```
 
 ### With OneDrive Integration
@@ -79,6 +85,9 @@ Please run the setup script to install all dependencies:
 
 # Then generate the website
 ./expose.sh -p example.site
+
+# Deploy to your web server
+./deploy.sh -p example.site
 ```
 
 ### Fast HTML Preview (skip image encoding)  
@@ -90,6 +99,20 @@ Please run the setup script to install all dependencies:
 ```bash
 ./expose.sh -c -p example.site
 ```
+
+### Deploy to Production
+```bash
+# First-time setup (interactive)
+./deploy.sh -p example.site
+
+# Subsequent deployments (uses saved config)
+./deploy.sh -p example.site
+
+# Build and deploy in one command
+./expose.sh -p example.site && ./deploy.sh -p example.site
+```
+
+📚 **Complete deployment guide**: [Deployment Documentation (DEPLOYMENT.md)](DEPLOYMENT.md)
 
 ### Available Options
 ```bash
@@ -106,8 +129,8 @@ Please run the setup script to install all dependencies:
 ```
 projects/
 ├── example/
-│   ├── config.sh              # Project configuration
-│   ├── metadata.txt           # Gallery-wide metadata (optional)
+│   ├── project.config         # Project configuration
+│   ├── site.config            # Site-wide content settings (optional)
 │   └── input/                 # Source images folder
 │       ├── image1.jpg         # Root gallery images (Homepage)
 │       ├── image2.jpg         
@@ -169,16 +192,56 @@ output/
 
 ## ⚙️ Configuration
 
-### Project Config (`config.sh`)
+Expose uses two configuration files:
+
+### 1. Project Config (`project.config`) - Structure & Technical Settings
+
+Located at `projects/<project>/project.config`:
+
 ```bash
-site_title="My Photography"
-site_copyright="© 2024 Your Name"
-nav_title="Portfolio"
+# Structure Settings
+root_gallery_name="Home"
+show_home_in_nav="false"
+
+# Theme
 theme="default"
-jpeg_quality=90
-resolution=(640 1024 1280 1920 2560 3840)
-show_home_in_nav=true
+
+# Sorting
 folder_sort_direction="desc"    # or "asc"
+image_sort_direction="desc"
+
+# Image Processing
+jpeg_quality=90
+
+# Infrastructure (optional)
+SHARE_URL="https://..."          # OneDrive sync
+REMOTE_HOST="example.com"        # Deployment
+```
+
+**Purpose:** Controls *how* the site is built (structure, theme, sorting, quality, deployment).
+
+### 2. Site Metadata (`site.config`) - Content Settings
+
+Located at `projects/<project>/site.config`:
+
+```bash
+# Site Content Settings
+site_title: My Photography
+site_description: A portfolio showcasing my best work
+site_author: John Doe
+site_keywords: photography, portfolio, landscape, portrait
+site_copyright: © 2025 Your Name
+nav_title: Portfolio
+```
+
+**Purpose:** Defines *what* is displayed (titles, copyright, labels). These values are available in all templates.
+
+**Separation:** Config = Technical, Metadata = Content
+
+### Theme Config (`themes/default/theme.config`)
+```bash
+# Image resolutions required by this theme
+resolution=(640 1024 1280 1920 2560 3840)
 ```
 
 ### 🔢 Folder Sorting
@@ -199,12 +262,51 @@ input/
 
 ## 📂 OneDrive Integration
 
-Exposé includes a high-performance OneDrive sync script for automatic image downloading from shared folders with structure preservation.
+Exposé includes a high-performance OneDrive sync script for automatic downloading of images and markdown files from shared folders with structure preservation.
 
 ### Quick Setup
 ```bash
 # Add OneDrive share URL to your project config
-echo 'SHARE_URL="https://1drv.ms/f/s/your-link"' >> projects/myproject/config.sh
+echo 'SHARE_URL="https://1drv.ms/f/s/your-link"' >> projects/myproject/project.config
+
+# Sync images and markdown files, then generate website
+./onedrive.sh -p myproject && ./expose.sh -p myproject
+```
+
+**Key features**: Recursive folder processing, auto-optimized performance (up to 43% faster), zero-config authentication, smart progress tracking, **markdown file sync**.
+
+📚 **Complete documentation**: [OneDrive Sync Guide (onedrive.md)](onedrive.md)
+
+## 📝 Gallery Content & Descriptions
+
+### Gallery Introduction with content.md
+
+Add a `content.md` file to any gallery folder for a rich text introduction that appears before the images:
+
+**input/Events/Fireworks/content.md:**
+```markdown
+---
+custom_title: Fireworks Gallery
+year: 2025
+---
+## Spectacular Fireworks
+
+"<cite>Fireworks</cite>" - a celebration captured in light and color.
+
+These photos showcase the **amazing displays** from various events.
+```
+
+**Features:**
+- **YAML metadata block** (optional): Define custom template variables
+- **Markdown formatting**: Full markdown support (headers, bold, italic, lists, links, etc.)
+- **Conditional rendering**: Gallery intro section only appears when content.md exists
+- **Automatic HTML conversion**: Markdown is parsed to HTML using Perl
+
+The `content.md` file creates a `gallery-intro` section that appears **before** the image gallery, perfect for:
+- Event descriptions
+- Photo series context
+- Gallery introductions
+- Artist statements
 
 # Sync images and generate website
 ./onedrive.sh -p myproject && ./expose.sh -p myproject
@@ -214,15 +316,19 @@ echo 'SHARE_URL="https://1drv.ms/f/s/your-link"' >> projects/myproject/config.sh
 
 📚 **Complete documentation**: [OneDrive Sync Guide (onedrive.md)](onedrive.md)
 
-### Metadata Files
-Add `metadata.txt` to any folder for gallery-wide settings:
+## 📝 Adding Descriptions
+
+### Gallery Metadata Files
+
+Add `metadata.txt` to any gallery folder (`input/Gallery/`) for gallery-wide settings:
 ```yaml
+# input/Summer-Vacation/metadata.txt
 title: "Summer Vacation 2024"
 description: "Photos from our trip to the mountains"
 width: 12    # Grid layout width
 ```
 
-## 📝 Adding Descriptions
+### Image Description Files
 
 Create text files with the same name as your images:
 
@@ -365,6 +471,44 @@ Exposé automatically detects folder types and generates appropriate navigation:
 
 ## 🎨 Theming & Customization
 
+### Mustache-Light Template Engine
+
+Exposé uses a custom Mustache-Light template engine that supports conditional sections for flexible template design:
+
+**Sections** (conditional rendering):
+```html
+{{#images}}
+<section class="gallery">
+    <h2>{{gallerytitle}}</h2>
+    {{content}}
+</section>
+{{/images}}
+```
+
+**Inverted Sections** (render when variable is empty/false):
+```html
+{{^images}}
+<p>No images in this gallery</p>
+{{/images}}
+```
+
+**Comments**:
+```html
+{{! This is a comment and won't appear in output }}
+```
+
+**Default Values**:
+```html
+{{width:50}}        <!-- defaults to 50 if not set -->
+{{title:Untitled}}  <!-- defaults to "Untitled" -->
+```
+
+**Key Features:**
+- Single-line processing for optimal performance
+- Multi-line template authoring (automatically collapsed)
+- Truthiness: Empty strings, "false", and "0" are falsy
+- All templates support sections and variables
+
 ### Template Variables
 
 **template.html** (main page layout):
@@ -372,16 +516,19 @@ Exposé automatically detects folder types and generates appropriate navigation:
 - `{{sitecopyright}}` - Copyright notice
 - `{{gallerytitle}}` - Current gallery name
 - `{{navigation}}` - Generated hierarchical navigation menu
-- `{{content}}` - Gallery content area
+- `{{content}}` - Gallery content area (images)
+- `{{gallerybody}}` - Gallery introduction from content.md
 - `{{basepath}}` - Relative path to site root
 - `{{resourcepath}}` - Path to gallery resources
+- `{{images}}` - Conditional: truthy when gallery has images
+- `{{gallerybody}}` - Conditional: truthy when content.md exists
 
 **post-template.html** (individual image):
 - `{{imageurl}}` - Image directory path
 - `{{imagewidth}}`, `{{imageheight}}` - Image dimensions
 - `{{imagemd5}}` - Unique image identifier
 - **EXIF variables**: `{{exif_FNumber}}`, `{{exif_ExposureTime}}`, `{{exif_ISO}}`, etc.
-- **Custom metadata**: Any variables from image text files
+- **Custom metadata**: Any variables from image text files or content.md YAML
 
 **nav-column-template.html** (column headers - depth 1):
 - `{{text}}` - Column name
@@ -439,7 +586,7 @@ Use fallback syntax for optional variables:
    - `nav-column-template.html` - Column headers (depth 1)
    - `nav-branch-template.html` - Structure folders (depth 2+)
    - `nav-leaf-template.html` - Gallery folders
-3. Update `config.sh`: `theme="mytheme"`
+3. Update `project.config`: `theme="mytheme"`
 
 ### Workflow Examples
 
@@ -501,7 +648,7 @@ Live examples:
 - [Demo Site](https://kirkone.github.io/Expose/) - Example gallery
 - [Personal Portfolio](https://photo.kirk.one/) - Real-world usage
 
-## � Credits
+## 🏆 Credits
 
 This project is heavily based on [Expose by Jack000](https://github.com/Jack000/Expose), an excellent static site generator for photographers. The core concept, templating system, and workflow remain largely inspired by the original work.
 
@@ -510,7 +657,9 @@ Key enhancements in this fork:
 - **Ultra-fast image processing**: VIPS with parallel processing (79x faster than sequential!)
 - **Rock-solid stability**: VIPS_CONCURRENCY=1 + retry logic prevents segfaults
 - **Batch processing**: Template optimization for large collections (1000+ images)
-- **OneDrive integration**: Automatic sync from shared folders with optimized concurrency (c=24 for 32-core)
+- **OneDrive integration**: Automatic sync of images and markdown files with optimized concurrency (c=24 for 32-core)
+- **Gallery content feature**: Rich text introductions using `content.md` files with YAML metadata support
+- **Mustache-Light engine**: Conditional sections (`{{#var}}...{{/var}}`) for flexible template design
 - **Extended EXIF support**: Camera settings display with smart formatting
 - **Improved navigation**: Support for mixed folders and hierarchical structures
 - **Modern tooling**: VIPS for blazing-fast image processing with intelligent parallelization
@@ -526,12 +675,19 @@ The script operates on your current working directory, and outputs a `output` di
 
 ### Configuration
 
-Site title, theme, jpeg quality and other config values can be edited in `config.sh` in the top
-level of your project, eg:
+Technical settings (theme, sorting, quality) are in `project.config`, content settings (titles, copyright) are in `site.config`:
 
 ```bash
-site_title="Alternate Site Title"
-theme="theme2"
+# project.config (structure & technical)
+theme="default"
+jpeg_quality=90
+
+# site.config (content)
+site_title: My Photography Site
+site_description: Showcasing my photography journey
+site_author: John Doe
+site_keywords: photography, art, nature
+site_copyright: © 2025 Your Name
 ```
 
 ### Flags
@@ -566,13 +722,44 @@ To arbitrarily order folders, add a numerical prefix to the folder name. Any num
 
 Any folders or images with an "_" prefix are ignored and excluded from the build.
 
-## Metadata file
+## Metadata Hierarchy
 
-If you want certain variables to apply to an entire gallery, place a metadata.txt (this is configurable) file in the project directory. eg. in metadata.txt:
+Exposé uses a hierarchical metadata system:
 
-	width: 19
+### 1. Site-wide metadata (`site.config`)
 
-This sets all image widths to form a grid. Metadata file parameters are overriden by metadata in individual posts.
+Located in `projects/<project>/site.config` - applies to the entire site:
+```bash
+site_title: My Photography
+site_description: A portfolio showcasing my best work
+site_author: John Doe
+site_keywords: photography, portfolio, landscape
+site_copyright: © 2025 Your Name
+nav_title: Portfolio
+```
+
+### 2. Gallery metadata (`metadata.txt`)
+
+Located in `projects/<project>/input/GalleryName/metadata.txt` - applies to a specific gallery:
+```bash
+width: 19
+textcolor: #ffffff
+```
+
+These settings apply to all images in that gallery and override site-wide defaults.
+
+### 3. Image metadata (`imagename.txt`)
+
+Located next to the image file - applies to a single image:
+```markdown
+---
+width: 50
+textcolor: #ff0000
+---
+Image description with **Markdown** support.
+```
+
+Individual image settings override gallery and site-wide settings.
 
 ## Advanced usage
 

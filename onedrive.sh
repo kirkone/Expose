@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # OneDrive Folder Sync Script
-# Downloads images from OneDrive shared folders maintaining original folder structure
+# Downloads images and markdown files from OneDrive shared folders maintaining original folder structure
 # Uses Badger token authentication with Microsoft OneDrive API
 #
 # Usage: ./onedrive.sh -p <project> [-c <concurrency>] [-f]
 # 
 # Author: Expose Static Site Generator
-# Version: 2.0
+# Version: 2.1
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -72,7 +72,7 @@ check_dependencies() {
 # Function to validate project configuration
 validate_project_config() {
     local project_folder="$1"
-    local config_file="${project_folder}/config.sh"
+    local config_file="${project_folder}/project.config"
     
     if [[ ! -d "$project_folder" ]]; then
         log_error "Project folder not found: $project_folder"
@@ -81,6 +81,9 @@ validate_project_config() {
     
     if [[ ! -f "$config_file" ]]; then
         log_error "Configuration file not found: $config_file"
+        echo "" >&2
+        echo "Create a new project with:" >&2
+        echo "  ./new-project.sh -p $(basename "$project_folder")" >&2
         return 1
     fi
     
@@ -222,16 +225,41 @@ extract_images_from_response() {
         name: (.name | sub("\\.[^/.]+$"; "")),
         file: .name,
         description: (.description // ""),
-        folder: $folder_path
+        folder: $folder_path,
+        type: "image"
     } | @base64'
     
     echo "$response" | jq -r --arg folder_path "$folder_path" "$jq_filter | $image_transform"
+}
+
+# Function to extract markdown files from API response
+extract_markdown_from_response() {
+    local response="$1"
+    local folder_path="${2:-}"
+    
+    local jq_filter='.value[]? | select(.file != null and (.name | endswith(".md")))'
+    local md_transform='{
+        src: ."@content.downloadUrl",
+        name: (.name | sub("\\.[^/.]+$"; "")),
+        file: .name,
+        description: (.description // ""),
+        folder: $folder_path,
+        type: "markdown"
+    } | @base64'
+    
+    echo "$response" | jq -r --arg folder_path "$folder_path" "$jq_filter | $md_transform"
 }
 
 # Function to count images in API response
 count_images_in_response() {
     local response="$1"
     echo "$response" | jq -r '.value[]? | select(.file != null and .file.mimeType != null and (.file.mimeType | startswith("image/"))) | .name' | wc -l
+}
+
+# Function to count markdown files in API response
+count_markdown_in_response() {
+    local response="$1"
+    echo "$response" | jq -r '.value[]? | select(.file != null and (.name | endswith(".md"))) | .name' | wc -l
 }
 
 # Function to count folders in API response
@@ -274,26 +302,38 @@ fetch_folder_contents() {
         return 1
     fi
     
-    # Count images and folders
-    local image_count folder_count
+    # Count images, markdown files, and folders
+    local image_count markdown_count folder_count
     image_count=$(count_images_in_response "$response")
+    markdown_count=$(count_markdown_in_response "$response")
     folder_count=$(count_folders_in_response "$response")
     
-    # Always show folder scan results, even for empty folders
-    if [[ "$image_count" -gt 0 && "$folder_count" -gt 0 ]]; then
-        echo "  $full_path: $image_count images, $folder_count folders" >&2
-    elif [[ "$image_count" -gt 0 ]]; then
-        echo "  $full_path: $image_count images" >&2
-    elif [[ "$folder_count" -gt 0 ]]; then
-        echo "  $full_path: $folder_count folders" >&2
+    # Build status message
+    local status_parts=()
+    [[ "$image_count" -gt 0 ]] && status_parts+=("$image_count images")
+    [[ "$markdown_count" -gt 0 ]] && status_parts+=("$markdown_count markdown")
+    [[ "$folder_count" -gt 0 ]] && status_parts+=("$folder_count folders")
+    
+    # Show folder scan results
+    if [[ ${#status_parts[@]} -gt 0 ]]; then
+        local status_message=$(IFS=", "; echo "${status_parts[*]}")
+        echo "  $full_path: $status_message" >&2
     else
         echo "  $full_path: empty" >&2
     fi
     
+    # Extract images
     if [[ "$image_count" -gt 0 ]]; then
         extract_images_from_response "$response" "$full_path"
     else
         log_debug "No images found in folder: $full_path"
+    fi
+    
+    # Extract markdown files
+    if [[ "$markdown_count" -gt 0 ]]; then
+        extract_markdown_from_response "$response" "$full_path"
+    else
+        log_debug "No markdown files found in folder: $full_path"
     fi
     
     # Process subfolders recursively
@@ -359,24 +399,34 @@ fetch_data_recursive() {
         return 1
     fi
     
-    # Process images in root folder
-    local root_image_count root_folder_count
+    # Process images and markdown in root folder
+    local root_image_count root_markdown_count root_folder_count
     root_image_count=$(count_images_in_response "$root_response")
+    root_markdown_count=$(count_markdown_in_response "$root_response")
     root_folder_count=$(count_folders_in_response "$root_response")
     
+    # Build status message for root
+    local root_status_parts=()
+    [[ "$root_image_count" -gt 0 ]] && root_status_parts+=("$root_image_count images")
+    [[ "$root_markdown_count" -gt 0 ]] && root_status_parts+=("$root_markdown_count markdown")
+    [[ "$root_folder_count" -gt 0 ]] && root_status_parts+=("$root_folder_count folders")
+    
     # Show root folder scan results
-    if [[ "$root_image_count" -gt 0 && "$root_folder_count" -gt 0 ]]; then
-        echo "  root: $root_image_count images, $root_folder_count folders" >&2
-    elif [[ "$root_image_count" -gt 0 ]]; then
-        echo "  root: $root_image_count images" >&2
-    elif [[ "$root_folder_count" -gt 0 ]]; then
-        echo "  root: $root_folder_count folders" >&2
+    if [[ ${#root_status_parts[@]} -gt 0 ]]; then
+        local root_status_message=$(IFS=", "; echo "${root_status_parts[*]}")
+        echo "  root: $root_status_message" >&2
     else
         echo "  root: empty" >&2
     fi
     
+    # Extract images from root
     if [[ "$root_image_count" -gt 0 ]]; then
         extract_images_from_response "$root_response" ""
+    fi
+    
+    # Extract markdown from root
+    if [[ "$root_markdown_count" -gt 0 ]]; then
+        extract_markdown_from_response "$root_response" ""
     fi
     
     # Get share metadata for subfolder processing
@@ -574,17 +624,17 @@ download_images_parallel() {
     
     local total_images=0
     
-    # Count total images
+    # Count total files
     total_images=$(echo "$images" | grep -c .)
     
     if [[ "$total_images" -eq 0 ]]; then
-        echo "  No images found to download" >&2
+        echo "  No files found to download" >&2
         return 0
     fi
     
 
     
-    echo "⬇️  Downloading $total_images images" >&2
+    echo "⬇️  Downloading $total_images files" >&2
     
     # Simpler approach: Use parallel processing with immediate progress output  
     local image_array=()
@@ -685,10 +735,10 @@ show_usage() {
     cat << EOF
 Usage: $(basename "$0") -p <project> [-c <concurrency>] [-f] [-d] [-h]
 
-Download images from OneDrive shared folders maintaining original folder structure.
+Download images and markdown files from OneDrive shared folders maintaining original folder structure.
 
 Options:
-    -p <project>      Project name (required) - must have config.sh with SHARE_URL
+    -p <project>      Project name (required) - must have project.config with SHARE_URL
     -c <concurrency>  Number of concurrent downloads (default: auto-optimized for I/O)
     -f                Force download (overwrite existing files)
     -d                Enable debug logging
@@ -700,8 +750,8 @@ Examples:
     $(basename "$0") -p myproject -f -d      # Force download with debug
     
 Project Structure:
-    projects/<project>/config.sh    - Must contain SHARE_URL variable
-    projects/<project>/input/       - Images will be downloaded here
+    projects/<project>/project.config    - Must contain SHARE_URL variable
+    projects/<project>/input/            - Images and markdown files will be downloaded here
 
 Requirements:
     - curl, jq, base64, tr, mkdir commands
@@ -838,7 +888,7 @@ main() {
     project_folder="${SCRIPT_DIR}/projects/${project}"
     project_input_folder="${project_folder}/input"
     
-    echo "🌟 OneDrive Sync Script v2.0" >&2
+    echo "🌟 OneDrive Sync Script v2.1 (Images + Markdown)" >&2
     
     echo "⚙️  Configuration:" >&2
     echo "  Project: $project" >&2
