@@ -106,8 +106,8 @@ nav_title=${nav_title:-"Pages"}
 # Root gallery display name (default: directory name)
 root_gallery_name=${root_gallery_name:-""}
 
-# Show root gallery in navigation (default: true)
-show_home_in_nav=${show_home_in_nav:-"true"}
+# Show root in navigation (default: true)
+show_root_in_nav=${show_root_in_nav:-"true"}
 
 theme=${theme:-"default"}
 theme_dir=${theme_dir:-"$scriptdir/themes/$theme"}
@@ -315,12 +315,12 @@ do
 	imagecount=$(find "$node" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.bmp" -o -iname "*.webp" \) | wc -l)
 	
 	# Determine node type:
-	# Type 2 = Column (depth 1, only subdirs, no images)
+	# Type 2 = Column (depth 0 or 1, only subdirs, no images)
 	# Type 1 = Leaf/Mixed gallery (has images, optionally subdirs)
 	# Type 0 = Structure (depth 2+, only subdirs, no images)
-	if [ "$node_depth" -eq 1 ] && [ "$dircount" -gt 0 ] && [ "$imagecount" -eq 0 ]
+	if ( [ "$node_depth" -eq 0 ] || [ "$node_depth" -eq 1 ] ) && [ "$dircount" -gt 0 ] && [ "$imagecount" -eq 0 ]
 	then
-		node_type=2 # column header (depth 1, only subdirs)
+		node_type=2 # column header (depth 0 or 1, only subdirs)
 	elif [ "$dircount" -gt 0 ] && [ "$imagecount" -gt 0 ]
 	then
 		node_type=1 # mixed: contains both dirs and images, treat as leaf gallery
@@ -335,9 +335,6 @@ do
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-	
-	# Debug output for navigation structure (simplified)
-	# echo "    📁 Index ${#paths[@]}: $node_name (depth: $node_depth, type: $node_type, dirs: $dircount, images: $imagecount) -> $node"
 done < <(find "$in_dir" -type d ! -path "$in_dir*/_*" | sort -V)  # Version sort for numeric prefixes
 
 # re-create directory structure
@@ -527,6 +524,15 @@ printf "\nBuilding Navigation"
 # Build hierarchical navigation using depth-first search (adapted from Jack's algorithm)
 navigation=""
 
+# Find root column parent once (if exists)
+root_column_parent=-1
+for k in "${!paths[@]}"; do
+    if [ "${nav_depth[k]}" = 0 ] && [ "${nav_type[k]}" = 2 ]; then
+        root_column_parent="$k"
+        break
+    fi
+done
+
 # Create markers for template replacement in hierarchical structure
 depth=1
 prevdepth=0
@@ -541,22 +547,44 @@ while [ "$remaining" -gt 0 ]; do
             parent="$j"
         fi
         
-        # Skip root directory in navigation
+        # Handle root directory specially
         if [ "${nav_depth[j]}" = 0 ]; then
+            # Skip root if show_root_in_nav is false
+            if [ "$show_root_in_nav" = "false" ]; then
+                ((remaining--))
+                continue
+            fi
+            
+            # If root is type 2 (column) and has no images, render as column
+            if [ "${nav_type[j]}" = 2 ] && [ "${nav_count[j]}" = 0 ]; then
+                nav_item="$nav_column_template"
+                nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                nav_item=$(template "$nav_item" children "{{marker$j}}")
+                navigation+="$nav_item"
+            fi
             ((remaining--))
             continue
         fi
         
         if [ "${nav_depth[j]}" = "$depth" ]; then
-            # Skip root gallery if show_home_in_nav is false
-            if [ "${paths[j]}" = "$in_dir" ] && [ "$show_home_in_nav" = "false" ]; then
+            # Skip root gallery if show_root_in_nav is false
+            if [ "${paths[j]}" = "$in_dir" ] && [ "$show_root_in_nav" = "false" ]; then
                 ((remaining--))
                 continue
             fi
             
             items_processed_this_depth=1
             
-            if [ "$parent" -lt 0 ] && [ "${nav_depth[j]}" = 1 ]; then
+            if [ "$root_column_parent" -ge 0 ] && [ "${nav_depth[j]}" = 1 ]; then
+                # Depth 1 items with root column parent - nest them inside the column
+                nav_item="$nav_leaf_template"
+                nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
+                nav_item=$(template "$nav_item" children "{{marker$j}}")
+                substring="$nav_item{{marker$root_column_parent}}"
+                navigation=$(template "$navigation" "marker$root_column_parent" "$substring")
+                ((remaining--))
+            elif [ "$parent" -lt 0 ] && [ "${nav_depth[j]}" = 1 ]; then
                 # Top level items (depth 1)
                 if [ "${nav_type[j]}" = 2 ]; then
                     # Column header (type 2)
@@ -1036,6 +1064,91 @@ do
 	
 	echo "$html" > "$out_dir/${nav_url[i]}"/index.html
 done
+
+# Generate root gallery from newest gallery if root has no images
+root_index=-1
+newest_gallery_index=-1
+
+for i in "${!paths[@]}"; do
+	if [ "${paths[i]}" = "$in_dir" ] && [ "${nav_count[i]}" -eq 0 ]; then
+		root_index=$i
+	fi
+	# Find newest gallery (depth 1, last one processed with desc sort)
+	if [ "${nav_depth[i]}" = 1 ] && [ "${nav_type[i]}" = 1 ]; then
+		newest_gallery_index=$i
+	fi
+done
+
+if [ "$root_index" -ge 0 ] && [ "$newest_gallery_index" -ge 0 ]; then
+	printf "\n\n    Creating root gallery from newest gallery (${nav_name[$newest_gallery_index]})"
+	
+	# Collect all images from newest gallery
+	gallery_images=()
+	for i in "${!gallery_nav[@]}"; do
+		nav_idx="${gallery_nav[i]}"
+		if [ "$nav_idx" = "$newest_gallery_index" ]; then
+			gallery_images+=("$i")
+		fi
+	done
+	
+	printf "\n        Using ${#gallery_images[@]} images from ${nav_name[$newest_gallery_index]}"
+	
+	# Build HTML for root gallery using template
+	html="$template"
+	
+	# Add posts for all images from newest gallery
+	for idx in "${gallery_images[@]}"; do
+		post="$post_template"
+		
+		# Get image data
+		img_hash="${gallery_url[idx]}"
+		img_width="${gallery_maxwidth[idx]}"
+		img_height="${gallery_maxheight[idx]}"
+		nav_idx="${gallery_nav[idx]}"
+		
+		# Use original path from newest gallery (no duplication)
+		original_resource_path="${nav_image_url[nav_idx]}"
+		
+		# Build template vars for this image
+		template_vars=(
+			"index:$((idx + 1))"
+			"post:"
+			"imagemd5:$img_hash"
+			"imageurl:$img_hash"
+			"imagewidth:$img_width"
+			"imageheight:$img_height"
+			"basepath:./"
+			"resourcepath:$original_resource_path/"
+		)
+		
+		# Apply template variables
+		post=$(template_batch "$post" "${template_vars[@]}")
+		
+		# Add to HTML
+		html=$(template "$html" content "$post {{content}}" true)
+	done
+	
+	# Build gallery-level template variables
+	gallery_vars=(
+		"sitetitle:$site_title"
+		"gallerytitle:${nav_name[$newest_gallery_index]}"
+		"sitecopyright:$site_copyright"
+		"resolution:$(printf "%s " "${resolution[@]}")"
+		"navigation:$navigation"
+		"basepath:./"
+		"resourcepath:"
+	)
+	
+	# Set all template variables
+	template_set_batch "${gallery_vars[@]}"
+	
+	# Render template
+	html=$(template_render "$html")
+	
+	printf "\n        Write root index.html"
+	
+	echo "$html" > "$out_dir/index.html"
+fi
 
 # Conditional image encoding based on -s flag
 if [ "$skip_images" = false ]; then
