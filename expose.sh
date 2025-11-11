@@ -26,7 +26,7 @@ if [ -f "project.config" ] && [ -d "input" ]; then
     project=$(basename "$topdir")
 else
     # Use the original project detection logic
-    project=$(ls "$topdir/projects" 2>/dev/null | head -1)
+    project=$(find "$topdir/projects" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | head -1)
     proj_dir="$topdir/projects/$project"
 fi
 
@@ -294,12 +294,12 @@ do
 	node_depth=$(echo "$node" | awk -F"/" "{ print NF-$root_depth }")
 	
 	# ignore empty directories
-	if find "$node" -maxdepth 0 -empty | read v
+	if find "$node" -maxdepth 0 -empty | read _
 	then
 		continue
 	fi
 	
-	node_name=$(basename "$node" | sed -e 's/^[0-9][0-9]* *//' | sed -e 's/^[[:space:]]*//;s/[[:space:]]*$//')
+	node_name=$(basename "$node" | sed -e 's/^[0-9][0-9]* *//;s/^[[:space:]]*//;s/[[:space:]]*$//')
 	if [ -z "$node_name" ]
 	then
 		node_name=$(basename "$node")
@@ -316,26 +316,27 @@ do
 	
 	# Determine node type:
 	# Type 2 = Column (depth 0 or 1, only subdirs, no images)
-	# Type 1 = Leaf/Mixed gallery (has images, optionally subdirs)
-	# Type 0 = Structure (depth 2+, only subdirs, no images)
+	# Type 1 = Leaf gallery (has images, no subdirs or subdirs at depth 0/1)
+	# Type 0 = Structure/Branch (depth 2+, has subdirs, regardless of images)
 	if ( [ "$node_depth" -eq 0 ] || [ "$node_depth" -eq 1 ] ) && [ "$dircount" -gt 0 ] && [ "$imagecount" -eq 0 ]
 	then
-		node_type=2 # column header (depth 0 or 1, only subdirs)
-	elif [ "$dircount" -gt 0 ] && [ "$imagecount" -gt 0 ]
+		node_type=2 # column header (depth 0 or 1, only subdirs, no images)
+	elif [ "$node_depth" -ge 2 ] && [ "$dircount" -gt 0 ]
 	then
-		node_type=1 # mixed: contains both dirs and images, treat as leaf gallery
+		node_type=0 # structure/branch at depth 2+: has subdirs (even if it also has images)
 	elif [ "$dircount" -gt 0 ]
 	then
-		node_type=0 # structure: dir contains other dirs, it is not a leaf
+		node_type=0 # structure: dir contains other dirs at depth 0/1, it is not a pure leaf
 	else
-		node_type=1 # leaf: does not contain other dirs, it is a leaf
+		node_type=1 # leaf: does not contain other dirs, it is a pure leaf gallery
 	fi
 	
 	paths+=("$node")
 	nav_name+=("$node_name")
 	nav_depth+=("$node_depth")
 	nav_type+=("$node_type")
-done < <(find "$in_dir" -type d ! -path "$in_dir*/_*" | sort -V)  # Version sort for numeric prefixes
+	nav_has_images+=("$imagecount")
+done < <(find "$in_dir" -type d ! -path "$in_dir*/_*" | sort -V $folder_sort_option)  # Version sort for numeric prefixes
 
 # re-create directory structure
 mkdir -p "$out_dir"
@@ -349,27 +350,37 @@ for i in "${!paths[@]}"
 do
 	echo -n " 📄"
 	
-	path="${paths[i]}"
-	if [ "$i" -gt 0 ]
-	then	
-		if [ "${nav_depth[i]}" -gt "${nav_depth[i-1]}" ]
-		then
-			# push onto stack when we go down a level
-			prev_url_rel=$(echo "${nav_name[i-1]}" | sed 's/[^ a-zA-Z0-9]//g;s/ /-/g' | tr '[:upper:]' '[:lower:]')
-			# Don't push root directory (depth 0) onto stack
-			if [ "${nav_depth[i-1]}" -gt 0 ]; then
-				dir_stack+=("$prev_url_rel")
-			fi
-		elif [ "${nav_depth[i]}" -lt "${nav_depth[i-1]}" ]
-		then
-			# pop stack with respect to current level
-			diff="${nav_depth[i-1]}"
-			while [ "$diff" -gt "${nav_depth[i]}" ] && [ "${#dir_stack[@]}" -gt 0 ]
-			do
-				unset dir_stack[${#dir_stack[@]}-1]
-				((diff--))
+	# Build dir_stack based on actual parent path, not array order
+	# Always rebuild dir_stack from path (not from previous array position)
+	current_path="${paths[i]}"
+	current_depth="${nav_depth[i]}"
+	
+	# Rebuild dir_stack from scratch based on current path
+	dir_stack=()
+	
+	# Split current path and build stack up to parent level
+	if [ "$current_depth" -gt 0 ]; then
+		# Get all parent directories from the path
+		temp_path="$current_path"
+		temp_stack=()
+		
+		# Walk up the path to root
+		for (( d=0; d<current_depth; d++ )); do
+			temp_path=$(dirname "$temp_path")
+			# Find this path in our nav arrays to get the name
+			for k in "${!paths[@]}"; do
+				if [ "${paths[k]}" = "$temp_path" ]; then
+					# Skip root (depth 0) from URL path
+					if [ "${nav_depth[k]}" -gt 0 ]; then
+						parent_url=$(echo "${nav_name[k]}" | sed 's/[^ a-zA-Z0-9]//g;s/ /-/g' | tr '[:upper:]' '[:lower:]')
+						temp_stack=("$parent_url" "${temp_stack[@]}")
+					fi
+					break
+				fi
 			done
-		fi
+		done
+		
+		dir_stack=("${temp_stack[@]}")
 	fi
 	
 	url_rel=$(echo "${nav_name[$i]}" | sed 's/[^ a-zA-Z0-9]//g;s/ /-/g' | tr '[:upper:]' '[:lower:]')
@@ -409,10 +420,9 @@ printf "\nReading files"
 # read in each file to populate $gallery variables
 for i in "${!paths[@]}"
 do
-	nav_count[i]=-1  # ALLE directories bekommen erstmal -1, auch non-galleries!
+	nav_count[i]=-1  # All directories start with -1, including non-galleries
 	
 	dir="${paths[i]}"
-	name="${nav_name[i]}"
 	url="${nav_url[i]}"
 	
 	# Check if directory has images - if not, skip processing but keep in nav structure
@@ -434,31 +444,17 @@ do
 	do
 		
 		filename=$(basename "$file")
-		filedir=$(dirname "$file")
-		filepath="$file"
 		
 		printf "\n        %s" "$filename"  # Show filename for better progress feedback
 		# printf "."  # Alternative: fast progress dots
 		
-		# Extract filename without extension
-		filename_base="${filename%.*}"
-		
-		# Combined trimming and URL generation (fewer process calls)
-		if [[ "$filename_base" =~ ^[[:space:]0-9]*(.+) ]]; then
-			trimmed="${BASH_REMATCH[1]}"
-		else
-			trimmed="$filename_base"
-		fi
-		
 		# URL-safe conversion - use stable hash-based ID to avoid reordering issues
-		base_name=$(echo "$trimmed" | sed 's/[^ a-zA-Z0-9]//g;s/ /-/g' | tr '[:upper:]' '[:lower:]')
 		image_id=$(echo "${file##*/}_$(stat -c '%Y_%s' "$file" 2>/dev/null || stat -f '%m_%z' "$file" 2>/dev/null)" | md5sum | cut -c1-12)
 		image_url="$image_id"  # Use stable hash-based ID
 		
 		# Extract and normalize extension (already filtered by find)
 		extension="${filename##*.}"
 		extension=$(echo "$extension" | tr '[:upper:]' '[:lower:]')
-		format="$extension"	
 		
 		
 		image="$file"
@@ -510,6 +506,7 @@ post_template=$(cat "$theme_dir/post-template.html" | tr -d '\n' | sed 's/>[[:sp
 # Minify navigation templates to single line for sed compatibility
 # This allows the template files to be nicely formatted while avoiding sed multi-line issues
 nav_branch_template=$(cat "$theme_dir/nav-branch-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
+nav_branch_empty_template=$(cat "$theme_dir/nav-branch-empty-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 nav_leaf_template=$(cat "$theme_dir/nav-leaf-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 nav_column_template=$(cat "$theme_dir/nav-column-template.html" | tr -d '\n' | sed 's/>[[:space:]]*</></g')
 
@@ -524,17 +521,26 @@ printf "\nBuilding Navigation"
 # Build hierarchical navigation using depth-first search (adapted from Jack's algorithm)
 navigation=""
 
-# Find root column parent once (if exists)
+# Find root column parent once (if exists) and process it immediately
 root_column_parent=-1
 for k in "${!paths[@]}"; do
     if [ "${nav_depth[k]}" = 0 ] && [ "${nav_type[k]}" = 2 ]; then
         root_column_parent="$k"
+        
+        # Skip root if show_root_in_nav is false
+        if [ "$show_root_in_nav" != "false" ]; then
+            # Render root column immediately
+            nav_item="$nav_column_template"
+            nav_item=$(template "$nav_item" text "${nav_name[k]}")
+            nav_item=$(template "$nav_item" children "{{marker$k}}")
+            navigation+="$nav_item"
+        fi
         break
     fi
 done
 
 # Create markers for template replacement in hierarchical structure
-depth=1
+depth=1  # Start at 1, root (depth 0) was handled above
 prevdepth=0
 remaining="${#paths[@]}"
 parent=-1
@@ -543,29 +549,6 @@ while [ "$remaining" -gt 0 ]; do
     items_processed_this_depth=0
     
     for j in "${!paths[@]}"; do
-        if [ "$depth" -gt 1 ] && [ "${nav_depth[j]}" = "$prevdepth" ]; then
-            parent="$j"
-        fi
-        
-        # Handle root directory specially
-        if [ "${nav_depth[j]}" = 0 ]; then
-            # Skip root if show_root_in_nav is false
-            if [ "$show_root_in_nav" = "false" ]; then
-                ((remaining--))
-                continue
-            fi
-            
-            # If root is type 2 (column) and has no images, render as column
-            if [ "${nav_type[j]}" = 2 ] && [ "${nav_count[j]}" = 0 ]; then
-                nav_item="$nav_column_template"
-                nav_item=$(template "$nav_item" text "${nav_name[j]}")
-                nav_item=$(template "$nav_item" children "{{marker$j}}")
-                navigation+="$nav_item"
-            fi
-            ((remaining--))
-            continue
-        fi
-        
         if [ "${nav_depth[j]}" = "$depth" ]; then
             # Skip root gallery if show_root_in_nav is false
             if [ "${paths[j]}" = "$in_dir" ] && [ "$show_root_in_nav" = "false" ]; then
@@ -593,10 +576,19 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
                     navigation+="$nav_item"
                 elif [ "${nav_type[j]}" = 0 ]; then
-                    # Structure node (has children, no own gallery)
-                    nav_item="$nav_branch_template"
-                    nav_item=$(template "$nav_item" text "${nav_name[j]}")
-                    nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    # Structure node (branch with or without own gallery)
+                    if [ "${nav_has_images[j]}" -gt 0 ]; then
+                        # Branch with own gallery - use link
+                        nav_item="$nav_branch_template"
+                        nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                        nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
+                        nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    else
+                        # Branch without own gallery - use span only
+                        nav_item="$nav_branch_empty_template"
+                        nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                        nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    fi
                     navigation+="$nav_item"
                 else
                     # Gallery node (has own page)
@@ -608,7 +600,26 @@ while [ "$remaining" -gt 0 ]; do
                 fi
                 ((remaining--))
             elif [ "${nav_depth[j]}" = "$depth" ]; then
-                # Nested items - replace parent marker
+                # Nested items - find correct parent by path
+                parent=-1
+                current_path="${paths[j]}"
+                parent_path=$(dirname "$current_path")
+                
+                # Find parent index by matching path
+                for k in "${!paths[@]}"; do
+                    if [ "${paths[k]}" = "$parent_path" ]; then
+                        parent="$k"
+                        break
+                    fi
+                done
+                
+                if [ "$parent" -lt 0 ]; then
+                    # Parent not found, skip this item
+                    ((remaining--))
+                    continue
+                fi
+                
+                # Replace parent marker with this item
                 if [ "${nav_type[j]}" = 2 ]; then
                     # Column (shouldn't happen at nested level, but handle it)
                     nav_item="$nav_column_template"
@@ -616,10 +627,19 @@ while [ "$remaining" -gt 0 ]; do
                     nav_item=$(template "$nav_item" children "{{marker$j}}")
                     substring="$nav_item{{marker$parent}}"
                 elif [ "${nav_type[j]}" = 0 ]; then
-                    # Structure node
-                    nav_item="$nav_branch_template"
-                    nav_item=$(template "$nav_item" text "${nav_name[j]}")
-                    nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    # Structure node (branch with or without own gallery)
+                    if [ "${nav_has_images[j]}" -gt 0 ]; then
+                        # Branch with own gallery - use link
+                        nav_item="$nav_branch_template"
+                        nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                        nav_item=$(template "$nav_item" uri "{{basepath}}${nav_url[j]}")
+                        nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    else
+                        # Branch without own gallery - use span only
+                        nav_item="$nav_branch_empty_template"
+                        nav_item=$(template "$nav_item" text "${nav_name[j]}")
+                        nav_item=$(template "$nav_item" children "{{marker$j}}")
+                    fi
                     substring="$nav_item{{marker$parent}}"
                 else
                     # Gallery node  
@@ -644,8 +664,9 @@ while [ "$remaining" -gt 0 ]; do
     ((depth++))
 done
 
-# Clean up remaining markers (empty children placeholders)
-navigation=$(echo "$navigation" | sed 's/{{marker[^}]*}}//g')
+# Clean up remaining placeholders (markers for children, active class)
+# Note: {{basepath}} is kept for later replacement by template_render()
+navigation=$(echo "$navigation" | sed 's/{{marker[^}]*}}//g; s/{{active}}//g')
 
 # Pre-extract all EXIF data in batch for massive performance boost
 printf "\nExtracting EXIF data in batch..."
@@ -800,15 +821,13 @@ do
 		
 		if [ "$metaline" ]
 		then
-			# YAML block exists - extract metadata and content separately
+			# YAML block exists - extract content (skip metadata block)
 			sumlines=$(echo "$gallery_content_text" | wc -l)
 			taillines=$((sumlines-metaline))
 			
-			gallery_content_metadata=$(echo "$gallery_content_text" | head -n "$metaline")
 			gallery_content_body=$(echo "$gallery_content_text" | tail -n "$taillines")
 		else
 			# No YAML block - everything is content
-			gallery_content_metadata=""
 			gallery_content_body="$gallery_content_text"
 		fi
 		
@@ -847,8 +866,6 @@ do
 		printf "\n        $filename" 
 		
 		filename="${filename%.*}"
-
-		filedir=$(dirname "$file_path")
 				
 		# Cache directories are created earlier in the script
 
@@ -1050,15 +1067,20 @@ do
 	# Set all template variables and render with Mustache-Light engine
 	template_set_batch "${gallery_vars[@]}"
 	
+	# Before rendering, mark the current page as active in the navigation
+	current_url="${nav_url[i]}"
+	page_navigation="$navigation"
+	if [ -n "$current_url" ]; then
+		# Replace {{active}} with "active" for the current page's URL
+		# (empty {{active}} placeholders are already removed from base navigation)
+		page_navigation=$(echo "$page_navigation" | sed "s|href=\"{{basepath}}$current_url\" class=\"\"|href=\"{{basepath}}$current_url\" class=\"active\"|g")
+	fi
+	
+	# Update the navigation variable for this specific page
+	template_set navigation "$page_navigation"
+	
 	# Render template with Mustache sections, variables, and defaults
 	html=$(template_render "$html")
-	
-	# Now replace {{active}} for the current page (after all other template processing)
-	current_url="${nav_url[i]}"
-	if [ -n "$current_url" ]; then
-		# Find href with current URL and replace {{active}} with "active" in the same tag
-		html=$(echo "$html" | sed "s|\(href=\"[^\"]*$current_url\"[^>]*\){{active}}|\1active|g")
-	fi
 
 	printf "\n        Write index.html"
 	
@@ -1073,9 +1095,19 @@ for i in "${!paths[@]}"; do
 	if [ "${paths[i]}" = "$in_dir" ] && [ "${nav_count[i]}" -eq 0 ]; then
 		root_index=$i
 	fi
-	# Find newest gallery (depth 1, last one processed with desc sort)
+	# Find newest gallery (depth 1)
+	# With desc sort (-r): first depth-1 entry is newest (2025, 2024, 2023...)
+	# With asc sort: last depth-1 entry is newest (2023, 2024, 2025...)
 	if [ "${nav_depth[i]}" = 1 ] && [ "${nav_type[i]}" = 1 ]; then
-		newest_gallery_index=$i
+		if [ "$folder_sort_direction" = "desc" ]; then
+			# desc: only set if not yet set (to get first one)
+			if [ "$newest_gallery_index" -eq -1 ]; then
+				newest_gallery_index=$i
+			fi
+		else
+			# asc: always update to get last one
+			newest_gallery_index=$i
+		fi
 	fi
 done
 
@@ -1105,6 +1137,7 @@ if [ "$root_index" -ge 0 ] && [ "$newest_gallery_index" -ge 0 ]; then
 		img_width="${gallery_maxwidth[idx]}"
 		img_height="${gallery_maxheight[idx]}"
 		nav_idx="${gallery_nav[idx]}"
+		file_path="${gallery_files[idx]}"
 		
 		# Use original path from newest gallery (no duplication)
 		original_resource_path="${nav_image_url[nav_idx]}"
@@ -1121,6 +1154,54 @@ if [ "$root_index" -ge 0 ] && [ "$newest_gallery_index" -ge 0 ]; then
 			"resourcepath:$original_resource_path/"
 		)
 		
+		# Extract EXIF data for root gallery (same as normal galleries)
+		filename=$(basename "$file_path")
+		if [ -n "$exif_placeholders_global" ]; then
+			# Find cache file for this image
+			cache_file=""
+			for k in "${!gallery_files[@]}"; do
+				if [ "$(basename "${gallery_files[k]}")" = "$filename" ]; then
+					file_cache_key="${gallery_md5[k]}"
+					cache_file="$exif_cache_dir/$file_cache_key.json"
+					break
+				fi
+			done
+			
+			if [ -f "$cache_file" ]; then
+				# Extract all needed fields in one jq call
+				fields_query=""
+				old_IFS="$IFS"
+				IFS=$'\n'
+				for field in $exif_placeholders_global; do
+					if [ -n "$fields_query" ]; then
+						fields_query="$fields_query, "
+					fi
+					fields_query="$fields_query\"$field\": (.${field} // empty)"
+				done
+				IFS="$old_IFS"
+				
+				# Get all values in one jq call
+				exif_data=$(jq -r "{$fields_query}" "$cache_file" 2>/dev/null)
+				
+				# Parse the result and add to template vars
+				old_IFS="$IFS"
+				IFS=$'\n'
+				for field in $exif_placeholders_global; do
+					value=$(echo "$exif_data" | jq -r --arg field "$field" '.[$field] // empty' 2>/dev/null)
+					if [ -n "$value" ] && [ "$value" != "null" ]; then
+						# Apply same transformations as normal galleries
+						if [ "$field" = "LensModel" ]; then
+							value=$(echo $value | sed 's/ (.*)//')
+						elif [ "$field" = "Model" ]; then
+							value=$(echo $value| sed -e 's/ILCE-7M4/α 7 IV/' -e 's/ILCE-7M3/α 7 III/' -e 's/ILCE-7M2/α 7 II/' -e 's/ILCE-7/α 7/' -e 's/ILCE-7RM5/α 7R V/' -e 's/ILCE-7RM4/α 7R IV/' -e 's/ILCE-7RM3/α 7R III/' -e 's/ILCE-7RM2/α 7R II/' -e 's/ILCE-7R/α 7R/' -e 's/ILCE-7SM3/α 7S III/' -e 's/ILCE-7SM2/α 7S II/' -e 's/ILCE-7S/α 7S/')
+						fi
+						template_vars+=("exif_$field:$value")
+					fi
+				done
+				IFS="$old_IFS"
+			fi
+		fi
+		
 		# Apply template variables
 		post=$(template_batch "$post" "${template_vars[@]}")
 		
@@ -1134,13 +1215,21 @@ if [ "$root_index" -ge 0 ] && [ "$newest_gallery_index" -ge 0 ]; then
 		"gallerytitle:${nav_name[$newest_gallery_index]}"
 		"sitecopyright:$site_copyright"
 		"resolution:$(printf "%s " "${resolution[@]}")"
-		"navigation:$navigation"
 		"basepath:./"
 		"resourcepath:"
 	)
 	
 	# Set all template variables
 	template_set_batch "${gallery_vars[@]}"
+	
+	# Mark the newest gallery as active in navigation for root page
+	# Since root displays content from newest gallery, its nav link should be active
+	root_navigation="$navigation"
+	newest_url="${nav_url[$newest_gallery_index]}"
+	if [ -n "$newest_url" ]; then
+		root_navigation=$(echo "$root_navigation" | sed "s|href=\"{{basepath}}$newest_url\" class=\"\"|href=\"{{basepath}}$newest_url\" class=\"active\"|g")
+	fi
+	template_set navigation "$root_navigation"
 	
 	# Render template
 	html=$(template_render "$html")
@@ -1162,9 +1251,11 @@ process_image() {
     local i=$1
     local navindex="${gallery_nav[i]}"
     local url="${nav_image_url[navindex]}/${gallery_url[i]}"
-    local filename=$(basename "${gallery_files[i]}")
+    local filename
+    filename=$(basename "${gallery_files[i]}")
     local image="${gallery_files[i]}"
-    local current_num=$((i + 1))
+    local current_num
+    current_num=$((i + 1))
     
     # Build progress message
     local progress_msg="    [$current_num/$total_images] ${nav_image_url[navindex]} - $filename"
@@ -1178,7 +1269,7 @@ process_image() {
     # Copy to temp using VIPS with retry
     local max_retries=3
     local copy_success=false
-    for retry in $(seq 1 $max_retries); do
+    for _ in {1..3}; do
         if vips copy "$image" "$temp_dir/source_image.v" 2>/dev/null; then
             copy_success=true
             break
@@ -1193,7 +1284,8 @@ process_image() {
         return 1
     fi
     
-    local source_width=$(vipsheader -f width "$temp_dir/source_image.v" 2>/dev/null)
+    local source_width
+    source_width=$(vipsheader -f width "$temp_dir/source_image.v" 2>/dev/null)
     if [ -z "$source_width" ] || [ "$source_width" -eq 0 ] 2>/dev/null; then
         echo "$progress_msg ✘ (invalid source)"
         rm -rf "$temp_dir"
@@ -1215,12 +1307,13 @@ process_image() {
         fi
         
         # Calculate scale factor
-        local scale_factor=$(echo "$res / $source_width" | bc -l)
+        local scale_factor
+        scale_factor=$(echo "$res / $source_width" | bc -l)
         local temp_resized="$temp_dir/resized_$res.v"
         
         # Resize with VIPS - with retry on segfault
         local resize_success=false
-        for retry in $(seq 1 $max_retries); do
+        for _ in {1..3}; do
             if vips resize "$temp_dir/source_image.v" "$temp_resized" $scale_factor 2>/dev/null; then
                 resize_success=true
                 break
@@ -1237,7 +1330,7 @@ process_image() {
         
         # Save as JPEG - with retry
         local save_success=false
-        for retry in $(seq 1 $max_retries); do
+        for _ in {1..3}; do
             if vips jpegsave "$temp_resized" "$output_file" --Q $jpeg_quality --optimize-coding --strip 2>/dev/null; then
                 save_success=true
                 break
@@ -1293,8 +1386,8 @@ for i in "${!gallery_files[@]}"; do
         # Clean up finished processes from array
         new_pids=()
         for pid in "${active_pids[@]}"; do
-            if kill -0 $pid 2>/dev/null; then
-                new_pids+=($pid)
+            if kill -0 "$pid" 2>/dev/null; then
+                new_pids+=("$pid")
             fi
         done
         active_pids=("${new_pids[@]}")
@@ -1313,7 +1406,7 @@ fi # End of conditional encoding
 
 printf "Copying resources"
 # copy resources to output
-rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-leaf-template.html" --exclude="nav-column-template.html" --exclude="theme.config" "$theme_dir/" "$out_dir/" >/dev/null
+rsync -av --exclude="template.html" --exclude="post-template.html" --exclude="nav-branch-template.html" --exclude="nav-branch-empty-template.html" --exclude="nav-leaf-template.html" --exclude="nav-column-template.html" --exclude="theme.config" "$theme_dir/" "$out_dir/" >/dev/null
 
 printf "\n    ✅\n"
 

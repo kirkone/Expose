@@ -189,14 +189,17 @@ body > nav section div {
   display: flex;
   flex-direction: column;
 }
-body > nav section div > span {
+body > nav section div > span,
+body > nav section div > a:first-child {
   font-weight: 100;
   font-size: var(--font-size-3);
   text-decoration: none;
-  color: hsl(var(--color-light-hsl));
+}
+body > nav section div > span {
+  color: hsl(var(--color-light-hsl)/0.65);
   cursor: default;
 }
-body > nav section div a {
+body > nav section div a:not(:first-child) {
   margin-left: var(--space-l);
   font-size: var(--font-size-2);
 }
@@ -626,14 +629,17 @@ footer nav section div {
   display: flex;
   flex-direction: column;
 }
-footer nav section div > span {
+footer nav section div > span,
+footer nav section div > a:first-child {
   font-weight: 100;
   font-size: var(--font-size-2);
   text-decoration: none;
-  color: hsl(var(--color-light-hsl));
+}
+footer nav section div > span {
+  color: hsl(var(--color-light-hsl)/0.65);
   cursor: default;
 }
-footer nav section div a {
+footer nav section div a:not(:first-child) {
   margin-left: var(--space-l);
   font-size: var(--font-size-1);
 }
