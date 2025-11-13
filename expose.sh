@@ -409,7 +409,7 @@ do
 		nav_url+=("")
 		nav_image_url+=("")
 	else
-		nav_url+=("$url")
+		nav_url+=("$url/")
 		nav_image_url+=("$url")
 		mkdir -p "$out_dir/$url"
 	fi

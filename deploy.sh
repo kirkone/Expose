@@ -87,9 +87,10 @@ if [ ! -d "$PROJ_DIR" ]; then
     exit 1
 fi
 
-# Check if output exists
-if [ ! -d "$PROJ_DIR/output" ]; then
-    echo -e "${RED}❌ Output directory not found: $PROJ_DIR/output${NC}"
+# Check if output exists (expose.sh writes to output/$PROJECT)
+OUTPUT_DIR="output/$PROJECT"
+if [ ! -d "$OUTPUT_DIR" ]; then
+    echo -e "${RED}❌ Output directory not found: $OUTPUT_DIR${NC}"
     echo -e "${YELLOW}💡 Tip: Run ./expose.sh -p $PROJECT first${NC}"
     exit 1
 fi
@@ -104,9 +105,10 @@ fi
 source "$PROJ_DIR/project.config"
 
 # Get deployment settings (from config, environment, or prompt)
-REMOTE_HOST=${DEPLOY_HOST:-${DEPLOY_HOST_DEFAULT:-}}
-REMOTE_USER=${DEPLOY_USER:-${USER}}
-REMOTE_PATH=${DEPLOY_PATH:-}
+# Prioritize project.config values, then environment variables
+REMOTE_HOST=${REMOTE_HOST:-${DEPLOY_HOST:-}}
+REMOTE_USER=${REMOTE_USER:-${DEPLOY_USER:-${USER}}}
+REMOTE_PATH=${REMOTE_PATH:-${DEPLOY_PATH:-}}
 
 # Interactive prompt if not set
 if [ -z "$REMOTE_HOST" ] || [ -z "$REMOTE_PATH" ]; then
@@ -191,7 +193,7 @@ echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}🚀 Deploying: ${BLUE}$PROJECT${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "   ${BLUE}From:${NC} $PROJ_DIR/output/"
+echo -e "   ${BLUE}From:${NC} $OUTPUT_DIR/"
 echo -e "   ${BLUE}To:${NC}   ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
@@ -210,7 +212,7 @@ echo ""
 
 rsync -avz --delete --progress --stats \
     $RSYNC_FLAGS \
-    "$PROJ_DIR/output/" \
+    "$OUTPUT_DIR/" \
     "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/" || {
     echo ""
     echo -e "${RED}❌ Deployment failed!${NC}"
