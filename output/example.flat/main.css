@@ -426,7 +426,7 @@ main .gallery > h2 {
 }
 main .gallery > article {
   flex-grow: calc(var(--width) * (500000000 / var(--height)));
-  flex-basis: calc(var(--space-s) * 15 * (var(--width) / var(--height)));
+  flex-basis: calc(var(--space-s) * 18 * (var(--width) / var(--height)));
   position: relative;
   background-color: hsl(var(--color-background-hsl));
   outline: solid var(--grid-gap) hsl(var(--color-background-hsl));

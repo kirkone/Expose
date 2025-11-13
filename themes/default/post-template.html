@@ -1,6 +1,17 @@
 <article tabindex="0" id="{{imagemd5}}" style="--width:{{imagewidth}}; --height:{{imageheight}};">
 	<picture>
-		<img alt="" loading="lazy" decoding="async" src="./{{resourcepath}}{{imageurl}}/640.jpg" width="{{imagewidth}}" height="{{imageheight}}">
+		<img
+			alt=""
+			loading="lazy"
+			decoding="async"
+			src="./{{resourcepath}}{{imageurl}}/640.jpg"
+			srcset="
+				./{{resourcepath}}{{imageurl}}/320.jpg 320w,
+				./{{resourcepath}}{{imageurl}}/640.jpg 640w
+				"
+			width="{{imagewidth}}"
+			height="{{imageheight}}"
+			>
 	</picture>
 	<aside>
 		<p>
@@ -16,15 +27,7 @@
 			<img
 				loading="lazy"
 				decoding="async"
-				src="./{{resourcepath}}{{imageurl}}/1920.jpg"
-				srcset="
-				./{{resourcepath}}{{imageurl}}/640.jpg 640w,
-				./{{resourcepath}}{{imageurl}}/1024.jpg 1024w,
-				./{{resourcepath}}{{imageurl}}/1280.jpg 1280w,
-				./{{resourcepath}}{{imageurl}}/1920.jpg 1920w,
-				./{{resourcepath}}{{imageurl}}/2560.jpg 2560w,
-				./{{resourcepath}}{{imageurl}}/3840.jpg 3840w
-				"
+				src="./{{resourcepath}}{{imageurl}}/{{imagewidth}}.jpg"
 				width="{{imagewidth}}"
 				height="{{imageheight}}"
 				alt=""
